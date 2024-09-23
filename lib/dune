@@ -1,0 +1,11 @@
+(library
+ (name lang_m)
+ (preprocess
+  (pps ppx_jane))
+ (libraries core string_dict))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser)
+ (flags --dump))

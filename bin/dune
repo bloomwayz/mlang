@@ -1,0 +1,6 @@
+(executable
+ (public_name lang_m)
+ (name main)
+ (preprocess
+  (pps ppx_jane))
+ (libraries lang_m core core_unix.command_unix core_unix.filename_unix))
