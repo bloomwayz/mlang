@@ -2,14 +2,16 @@
 opam-version: "2.0"
 synopsis: "Language M"
 description: "Language M"
-maintainer: ["Jay Lee"]
-authors: ["Jay Lee"]
+maintainer: ["Jay Lee" "Junyoung Park"]
+authors: ["Jay Lee" "Junyoung Park"]
 license: "LICENSE"
 tags: ["Programming Language"]
+homepage: "https://github.com/bloomwayz/mlang"
+bug-reports: "https://github.com/bloomwayz/mlang/issues"
 depends: [
-"ocaml"
+  "ocaml"
   "dune" {>= "3.15"}
-"yojson"
+  "yojson"
   "ocaml-base-compiler" {>= "5.2.0"}
   "ocaml-compiler-libs"
   "core" {>= "0.17.1"}
@@ -33,3 +35,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
+dev-repo: "git+https://github.com/bloomwayz/mlang.git"

@@ -6,12 +6,16 @@
 
 (generate_opam_files true)
 
-; (source
-;  (github username/reponame))
+(source
+ (github bloomwayz/mlang))
 
-(authors "Jay Lee")
+(authors
+  "Jay Lee"
+  "Junyoung Park")
 
-(maintainers "Jay Lee")
+(maintainers
+  "Jay Lee"
+  "Junyoung Park")
 
 (license LICENSE)
 
@@ -22,7 +26,7 @@
  (synopsis "Language M")
  (description "Language M")
  (depends
-ocaml
+  ocaml
   dune
   yojson
   (ocaml-base-compiler
