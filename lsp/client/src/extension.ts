@@ -11,7 +11,7 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-	const command = path.join(context.extensionPath, '..', '_build', 'default', 'lsp', 'server', 'bin', 'main.exe');
+	const command = path.join(context.extensionPath, '_build', 'default', 'lsp', 'server', 'bin', 'main.exe');
 
     const serverOptions: ServerOptions = {
         run: { command, transport: TransportKind.stdio },
