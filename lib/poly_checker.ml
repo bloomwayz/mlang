@@ -43,6 +43,7 @@ type ty_scheme =
   | GenTyp of (var list * ty)
 
 type ty_env = (Syntax.id * ty_scheme) list
+let empty_tyenv : ty_env = []
 
 let count = ref 0 
 
@@ -127,7 +128,7 @@ let infer : ty_env ref -> ty -> Syntax.expr -> subst =
   raise (Interp.Type_error "Type Checker Unimplemented")
 
 let check (exp : Syntax.expr) : Syntax.typ =
-  let tyenv = ref [] in
+  let tyenv = ref empty_tyenv in
   let a = Var (new_var ()) in
-  let top_type = (infer tyenv a exp) a in
-  m_ty_of_ty top_type
+  let ty = (infer tyenv a exp) a in
+  m_ty_of_ty ty

@@ -10,30 +10,27 @@ open Range
 open Document
 open Lang_m
 open Lang_m.Syntax
-open Lang_m.Poly_checker
 
-exception Unbound_variable = Unbound_variable
-exception Unification_error_with_loc = Unification_error_with_loc
+let count = ref 0
 
-let check_top = check_top
-let check_sub = check_sub
-let string_of_ty = string_of_ty
+let gen_sym = fun () ->
+  incr count;
+  "'a" ^ string_of_int !count
 
-let undisclose s =
-  let count = ref 0 in
-  let dict = [ "'a"; "'b"; "'c"; "'d"; "'e"; "'f"; "'g" ] in
-  let r = Str.regexp {|'a[0-9]+|} in
-  let rec collect s i =
-    match Str.search_forward r s i with
-    | i ->
-        let sub = Str.matched_string s in
-        let subr = Str.regexp sub in
-        let s = Str.global_replace subr (List.nth dict !count) s in
-        let _ = count := 1 in
-        collect s (i + 1)
-    | exception Not_found -> s
-  in
-  collect s 0
+let check_top (exp : Syntax.expr) : Poly_checker.ty =
+  let open Poly_checker in
+  let tyenv = ref empty_tyenv in
+  let a = Var (gen_sym ()) in
+  (infer tyenv a exp) a
+
+let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
+  let open Poly_checker in
+  let tyenv = ref empty_tyenv in
+  let a = Var (gen_sym ()) in
+  let _ = infer tyenv a top in
+
+  let b = Var (gen_sym ()) in
+  (infer tyenv b sub) b
 
 let rec traverse_ast (exp : expr) (acc : expr list) =
   match exp.desc with
@@ -102,41 +99,32 @@ let token_with_lexbuf (lexbuf : Lexing.lexbuf) (pos : Position.t) =
   in
   inner ()
 
-let infer_var (id : string) (top : expr) (sub : expr) : string =
-  match sub.desc with
-  | Var x -> (
-      try
-        let fty = check_sub top sub in
-        string_of_ty fty
-      with Unification_error_with_loc (msg, _) -> msg)
-  | Let (Val (x, e1), _) -> (
-      try
-        let fty = check_sub top e1 in
-        string_of_ty fty
-      with Unification_error_with_loc (msg, _) -> msg)
-  | Let (Rec (f, x, e1), e2) ->
-      let fexp = { desc = Fn (x, e1); loc = sub.loc } in
-      if id = f then
-        try
-          let fty = check_sub top fexp in
-          string_of_ty fty
-        with Unification_error_with_loc (msg, _) -> msg
-      else if id = x then
-        try
-          let fty = string_of_ty (check_sub top fexp) in
-          let i = Str.search_forward (Str.regexp {| -> |}) fty 0 in
-          String.sub fty 0 i
-        with Unification_error_with_loc (msg, _) -> msg
-      else failwith "id not matched"
-  | Fn (x, e) -> (
-      try
-        let fty = check_sub top sub in
-        let fty = string_of_ty fty in
+let infer_var (id : string) (top : expr) (sub : expr) (range : Range.t) =
+  let open Poly_checker in
+  try 
+    match sub.desc with
+    | Var x ->
+        let ty = string_of_ty (check_sub top sub) in
+        Some (ty, range)
+    | Let (Val (x, e1), _) ->
+        let ty = string_of_ty (check_sub top e1) in
+        Some (ty, range)
+    | Let (Rec (f, x, e1), e2) ->
+        let fexp = { desc = Fn (x, e1); loc = sub.loc } in
+        let fty = string_of_ty (check_sub top fexp) in
+        if id = f then Some (fty, range)
+        else if id = x then
+          let r = Str.regexp {| -> |} in
+          let i = Str.search_forward r fty 0 in
+          Some (String.sub fty 0 i, range)
+        else None
+    | Fn (x, e) ->
+        let fty = string_of_ty (check_sub top sub) in
         let r = Str.regexp {| -> |} in
         let i = Str.search_forward r fty 0 in
-        String.sub fty 0 i
-      with Unification_error_with_loc (msg, _) -> msg)
-  | _ -> failwith "Unreachable"
+        Some (String.sub fty 0 i, range)
+    | _ -> None
+  with _ -> None
 
 let token_at_pos (raw : string) (pos : Position.t) =
   match Lexing.from_string raw with
@@ -144,12 +132,14 @@ let token_at_pos (raw : string) (pos : Position.t) =
   | exception _ -> None
 
 let infer_fn (top : expr) (sub : expr) =
+  let open Poly_checker in
   let range = Range.from_location sub.loc in
   match check_sub top sub with
   | x -> Some (string_of_ty x, range)
   | exception _ -> None
 
 let infer_letval (top : expr) (sub : expr) =
+  let open Poly_checker in
   match sub.desc with
   | Let (Val (x, e1), _) -> (
       match check_sub top e1 with
@@ -164,6 +154,7 @@ let infer_letval (top : expr) (sub : expr) =
   | _ -> None
 
 let infer_letrec (top : expr) (sub : expr) =
+  let open Poly_checker in
   match sub.desc with
   | Let (Rec (f, x, e1), e2) -> (
       let range = Range.from_location sub.loc in
@@ -185,7 +176,7 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   match subexp_at_pos exp curr_pos with
   | Some subexp -> (
       match token_opt with
-      | Some (ID x, range) -> Some (infer_var x exp subexp, range)
+      | Some (ID x, range) -> infer_var x exp subexp range
       | Some (VAL, range) -> infer_letval exp subexp
       | Some (REC, range) -> infer_letrec exp subexp
       | Some (FN, range) | Some (RARROW, range) -> infer_fn exp subexp
