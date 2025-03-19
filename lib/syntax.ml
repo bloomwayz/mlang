@@ -1,12 +1,14 @@
 open! Core
 (** Definition of M's syntax, type and interpreter *)
 
-type expr =
+type expr = { desc : desc; loc : Location.t }
+
+and desc =
   | Const of const
   | Var of id
   | Fn of id * expr
   | App of expr * expr
-  | Let of decl * expr
+  | Let of decl_ * expr
   | If of expr * expr * expr
   | Bop of bop * expr * expr
   | Read
@@ -21,11 +23,21 @@ type expr =
 
 and const = String of string | Int of int | Bool of bool
 and id = string
+and decl = { decl_ : decl_; loc : Location.t }
 
-and decl =
+and decl_ =
   | Rec of id * id * expr (* Recursive fn (fun_id, arg_id, body) *)
   | Val of id * expr (* Value, including non-recursive fns *)
 
 and bop = Add | Sub | Eq | And | Or
 
-type typ = T_int | T_bool | T_string | T_pair of typ * typ | T_loc of typ
+type typ =
+  | T_int
+  | T_bool
+  | T_string
+  | T_pair of typ * typ
+  | T_loc of typ
+  | T_arrow of typ * typ
+
+let mk ~loc desc = { desc; loc }
+let mk_ ~loc decl_ = { decl_; loc }

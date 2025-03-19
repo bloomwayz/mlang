@@ -71,7 +71,7 @@ let op_to_fn =
         | _ -> raise (Type_error "Eq operands are not int/bool/str/loc"))
 
 let rec eval env mem exp =
-  match exp with
+  match exp.desc with
   | Const (String s) -> (Dom.String s, mem)
   | Const (Int n) -> (Int n, mem)
   | Const (Bool b) -> (Bool b, mem)
