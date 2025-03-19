@@ -1,0 +1,5 @@
+(library
+ (name dm)
+ (preprocess
+  (pps ppx_jane ppx_yojson_conv))
+ (libraries lang_m core yojson str))

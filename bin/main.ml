@@ -29,23 +29,6 @@ let get_program (filename : string) : Syntax.expr =
       In_channel.close inx;
       exit (-1)
 
-let get_program_from_string (filename : string) (state : string) : Syntax.expr =
-  let lexbuf = Lexing.from_string state in
-  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-
-  match parse_with_error lexbuf with
-  | prog -> prog
-  | exception Parser.Error ->
-      let open Lexing in
-      let pos = lexbuf.lex_curr_p in
-      raise
-        (SyntaxError
-           ("Parsing Error", pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1))
-  | exception Lexer.SyntaxError msg ->
-      let open Lexing in
-      let pos = lexbuf.lex_curr_p in
-      raise (SyntaxError (msg, pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1))
-
 let command : Command.t =
   Command.basic ~summary:"The Language M"
     ~readme:(fun () -> "Language M is a programming language")

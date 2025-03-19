@@ -1,0 +1,6 @@
+(executable
+ (public_name server)
+ (name main)
+ (preprocess
+  (pps ppx_jane))
+ (libraries dm))
