@@ -7,12 +7,16 @@ authors: ["Jay Lee"]
 license: "LICENSE"
 tags: ["Programming Language"]
 depends: [
+"ocaml"
   "dune" {>= "3.15"}
+"yojson"
+  "ocaml-base-compiler" {>= "5.2.0"}
+  "ocaml-compiler-libs"
   "core" {>= "0.17.1"}
   "core_unix" {>= "0.17.0"}
   "string_dict" {>= "0.17.0"}
   "ppx_jane" {>= "0.17.0"}
-  "menhir" {>= "20231231"}
+  "menhir" {>= "3.0"}
   "odoc" {with-doc}
 ]
 build: [
