@@ -151,8 +151,8 @@ let infer_fn (top : expr) (sub : expr) =
 
 let infer_letval (top : expr) (sub : expr) =
   match sub.desc with
-  | Let (Val (x, e1), _) ->
-      (match (check_sub top e1) with
+  | Let (Val (x, e1), _) -> (
+      match check_sub top e1 with
       | fty ->
           let fty_str = string_of_ty fty in
           let r = Range.from_location sub.loc in

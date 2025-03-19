@@ -21,7 +21,7 @@ module States = struct
   let get_pstate (filename : string) (rstate : string) : pstate =
     let lexbuf = Lexing.from_string rstate in
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  
+
     match parse_with_error lexbuf with
     | ast -> Ast ast
     | exception Parser.Error ->
