@@ -35,7 +35,9 @@ let compute params =
   match st.parsedState with
   | Ast ast -> (
       match infer_sub st ast curr_pos with
-      | Some (value, range) -> HoverResult.create ~value ~range
+      | Some (value, range) ->
+          let value = undisclose value in
+          HoverResult.create ~value ~range
       | None -> None)
   | Fail _ -> None
 

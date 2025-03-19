@@ -125,7 +125,7 @@ let subst_env : subst -> ty_env -> ty_env = fun subs tyenv ->
  * Do not modify the signature, or the Language Server will not work
  *)
 let infer : ty_env ref -> ty -> Syntax.expr -> subst =
-  raise (Interp.Type_error "Type Checker Unimplemented")
+  fun _ _ _ -> empty_subst
 
 let check (exp : Syntax.expr) : Syntax.typ =
   let tyenv = ref empty_tyenv in

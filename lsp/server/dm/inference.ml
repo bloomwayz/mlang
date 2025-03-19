@@ -17,11 +17,13 @@ let gen_sym = fun () ->
   incr count;
   "'a" ^ string_of_int !count
 
-let check_top (exp : Syntax.expr) : Poly_checker.ty =
+let check_top (exp : Syntax.expr) : Poly_checker.ty option =
   let open Poly_checker in
   let tyenv = ref empty_tyenv in
   let a = Var (gen_sym ()) in
-  (infer tyenv a exp) a
+  match infer tyenv a exp with
+  | subs -> Some (subs a)
+  | exception _ -> None
 
 let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let open Poly_checker in
@@ -31,6 +33,26 @@ let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
 
   let b = Var (gen_sym ()) in
   (infer tyenv b sub) b
+let string_of_cnt n =
+  let base = Char.code 'a' in
+  if n < 26 then
+    Printf.sprintf "'%c" (Char.chr (base + n))
+  else
+    Printf.sprintf "'%c%d" (Char.chr (base + n mod 26)) (n / 26)
+
+let undisclose s =
+  let count = ref 0 in
+  let r = Str.regexp {|'a[0-9]+|} in
+  let rec collect s i =
+    match Str.search_forward r s i with
+    | i ->
+        let sub = Str.matched_string s in
+        let subr = Str.regexp sub in
+        let s = Str.global_replace subr (string_of_cnt !count) s in
+      incr count; collect s (i + 1)
+    | exception Not_found -> s
+  in
+  collect s 0
 
 let rec traverse_ast (exp : expr) (acc : expr list) =
   match exp.desc with

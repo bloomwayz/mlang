@@ -30,8 +30,8 @@ end
 let get_rng_msg : States.pstate -> (Range.t * string) option = function
   | Ast ast -> (
       match check_top ast with
-      | ty -> None
-      | exception _ -> Some (Range.from_tuples (0, 0) (0, 0), "Type error"))
+      | Some ty -> None
+      | None -> Some (Range.from_tuples (0, 0) (0, 0), "Type error"))
   | Fail (msg, ln, _) ->
       let rng = Range.from_tuples (ln, 0) (ln, 100) in
       Some (rng, msg)
