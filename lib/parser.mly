@@ -62,23 +62,22 @@ let select = function
 %inline mkdcl(symb): symb { mkdcl ~loc:$sloc $1 }
 
 prog:
-    | cprog; EOF { $1 }
-cprog:
-    | COMMENT; expr; COMMENT { $2 }
-    | COMMENT; expr { $2 }
-    | expr; COMMENT { $1 }
+    | cexp; EOF { $1 }
+cexp:
     | expr { $1 }
+    | COMMENT; cexp { $2 }
+    | cexp; COMMENT { $1 }
 expr:
     | apply { $1 }
     | lexpr { $1 }
-    | mkexp(FN; param = ID; RARROW; body = expr { Fn (param, body) }) { $1 }
-    | mkexp(IF; pred = expr; THEN; con = expr; ELSE; alt = expr { If (pred, con, alt) }) { $1 }
-    | mkexp(e1 = expr; COLEQ; e2 = expr { Assign (e1, e2) }) { $1 }
-    | mkexp(e = expr; DOT; n = INT { select (e, n) }) { $1 }
-    | mkexp(e1 = expr; SEMI; e2 = expr { Seq (e1, e2) }) { $1 }
-    | mkexp(BANG; e = expr { Deref e }) { $1 }
+    | mkexp(FN; param = ID; RARROW; body = cexp { Fn (param, body) }) { $1 }
+    | mkexp(IF; pred = cexp; THEN; con = cexp; ELSE; alt = cexp { If (pred, con, alt) }) { $1 }
+    | mkexp(e1 = cexp; COLEQ; e2 = cexp { Assign (e1, e2) }) { $1 }
+    | mkexp(e = cexp; DOT; n = INT { select (e, n) }) { $1 }
+    | mkexp(e1 = cexp; SEMI; e2 = cexp { Seq (e1, e2) }) { $1 }
+    | mkexp(BANG; e = cexp { Deref e }) { $1 }
     | mkexp(READ { Read }) { $1 }
-    | mkexp(left = expr; op = bop; right = expr { Bop (op, left, right) }) { $1 }
+    | mkexp(left = cexp; op = bop; right = cexp { Bop (op, left, right) }) { $1 }
 %inline bop:
     | EQ { Eq }
     | AND { And }
@@ -86,10 +85,10 @@ expr:
     | PLUS { Add }
     | MINUS { Sub }
 lexpr:
-    | mkexp(LET; decls = list(decl); IN; body = expr; END { desugar_let (decls, body) }) { $1 }
+    | mkexp(LET; decls = list(decl); IN; body = cexp; END { desugar_let (decls, body) }) { $1 }
 decl:
-    | mkdcl(VAL; x = ID; EQ; e = expr { Val (x, e) }) { $1 }
-    | mkdcl(REC; f = ID; EQ; FN; x = ID; RARROW; e = expr { Rec (f, x, e) }) { $1 }
+    | mkdcl(VAL; x = ID; EQ; e = cexp { Val (x, e) }) { $1 }
+    | mkdcl(REC; f = ID; EQ; FN; x = ID; RARROW; e = cexp { Rec (f, x, e) }) { $1 }
 apply:
     | atom { $1 }
     | mkexp(f = apply; x = atom { App (f, x) }) { $1 }
@@ -101,6 +100,6 @@ atom:
     | mkexp(n = INT { Const (Int n) }) { $1 }
     | mkexp(s = STRING { Const (String s) }) { $1 }
     | mkexp(x = ID { Var x }) { $1 }
-    | mkexp(LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN { Pair (e1, e2) }) { $1 }
-    | LPAREN; e = expr; RPAREN { e }
+    | mkexp(LPAREN; e1 = cexp; COMMA; e2 = cexp; RPAREN { Pair (e1, e2) }) { $1 }
+    | LPAREN; e = cexp; RPAREN { e }
     
