@@ -32,9 +32,10 @@ let dispatch (obj : Protocol.obj) =
     | "textDocument/codeLens" -> CodeLens.run id params
     | "textDocument/diagnostic" -> Diagnostic.push id params
     | "textDocument/semanticTokens/full" -> Tokens.run id params
+    | "textDocument/documentSymbol" -> Symbols.run id params
     (* | "textDocument/completion" -> Completion.run id params *)
-    | "textDocument/foldingRange" -> ()
-    | unknown_method -> failwith ("unknown method: " ^ unknown_method)
+    (* | "textDocument/foldingRange" -> () *)
+    | unknown_method -> ()
   in
 
   let on_notification method_ params =

@@ -18,6 +18,7 @@ module ServerCapabilities = struct
     foldingRangeProvider : bool;
     semanticTokensProvider : semanticTokensOptions;
     diagnosticProvider : diagnosticOptions;
+    documentSymbolProvider : bool;
   }
   [@@deriving yojson]
 
@@ -73,7 +74,8 @@ module ServerCapabilities = struct
       ~(completionProvider : completionOptions) ~(hoverProvider : bool)
       ~(codeLensProvider : codeLensOptions) ~(foldingRangeProvider : bool)
       ~(semanticTokensProvider : semanticTokensOptions)
-      ~(diagnosticProvider : diagnosticOptions) : t =
+      ~(diagnosticProvider : diagnosticOptions)
+      ~(documentSymbolProvider : bool) : t =
     {
       textDocumentSync;
       completionProvider;
@@ -82,6 +84,7 @@ module ServerCapabilities = struct
       foldingRangeProvider;
       semanticTokensProvider;
       diagnosticProvider;
+      documentSymbolProvider
     }
 end
 
@@ -104,14 +107,14 @@ let textDocumentSync =
 
 let completionProvider =
   ServerCapabilities.create_completionOptions ~triggerCharacters:[ "." ]
-    ~resolveProvider:true
+    ~resolveProvider:false
 
 let hoverProvider = true
 
 let codeLensProvider =
   ServerCapabilities.create_codeLensOptions ~resolveProvider:false
 
-let foldingRangeProvider = true
+let foldingRangeProvider = false
 
 let tokenTypes =
   [
@@ -139,10 +142,12 @@ let diagnosticProvider =
   ServerCapabilities.create_diagnosticOptions ~interFileDependencies:false
     ~workspaceDiagnostics:false
 
+let documentSymbolProvider = true
+
 let capabilities =
   ServerCapabilities.create ~textDocumentSync ~completionProvider ~hoverProvider
     ~codeLensProvider ~foldingRangeProvider ~semanticTokensProvider
-    ~diagnosticProvider
+    ~diagnosticProvider ~documentSymbolProvider
 
 let serverInfo =
   InitializeResult.create_serverInfo ~name:"m-language-server" ~version:"0.0.1"
