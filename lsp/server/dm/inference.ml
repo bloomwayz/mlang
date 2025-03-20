@@ -160,35 +160,32 @@ let infer_fn (top : expr) (sub : expr) =
   | x -> Some (string_of_ty x, range)
   | exception _ -> None
 
-let infer_letval (top : expr) (sub : expr) =
+let infer_bind (top : expr) (sub : expr) =
   let open Poly_checker in
-  match sub.desc with
-  | Let (Val (x, e1), _) -> (
-      match check_sub top e1 with
-      | fty ->
-          let fty_str = string_of_ty fty in
-          let r = Range.from_location sub.loc in
-          let sln, scl = (r.start.ln, r.start.col) in
-          let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
-          let r' = Range.from_tuples (sln, scl) (eln - 1, ecl) in
-          Some (fty_str, r')
-      | exception _ -> None)
-  | _ -> None
 
-let infer_letrec (top : expr) (sub : expr) =
+  let fexp, e1 = (
+    match sub.desc with
+    | Let (Val (x, e1), _) -> e1, e1
+    | Let (Rec (f, x, e1), e2) -> { desc = Fn (x, e1); loc = sub.loc }, e1
+    | _ -> failwith "not a let-bind" )
+  in
+
+  match check_sub top fexp with
+  | fty -> 
+      let fty_str = string_of_ty fty in
+      let r = Range.from_location sub.loc in
+      let sln, scl = (r.start.ln, r.start.col) in
+      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
+      let r' = Range.from_tuples (sln, scl) (eln - 1, ecl) in
+      Some (fty_str, r')
+  | exception _ -> None
+
+let infer_pair (top : expr) (sub : expr) =
   let open Poly_checker in
-  match sub.desc with
-  | Let (Rec (f, x, e1), e2) -> (
-      let range = Range.from_location sub.loc in
-      match check_sub top sub with
-      | x -> Some (string_of_ty x, range)
-      | exception _ -> None)
-  | Fst _ | Snd _ | Pair _ -> (
-      let range = Range.from_location sub.loc in
-      match check_sub top sub with
-      | x -> Some (string_of_ty x, range)
-      | exception _ -> None)
-  | _ -> failwith "Unreachable"
+  let range = Range.from_location sub.loc in
+  match check_sub top sub with
+  | x -> Some (string_of_ty x, range)
+  | exception _ -> None
 
 let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
     (string * Range.t) option =
@@ -199,26 +196,24 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   | Some subexp -> (
       match token_opt with
       | Some (ID x, range) -> infer_var x exp subexp range
-      | Some (VAL, range) -> infer_letval exp subexp
-      | Some (REC, range) -> infer_letrec exp subexp
+      | Some (VAL, range) | Some (REC, range) -> infer_bind exp subexp
       | Some (FN, range) | Some (RARROW, range) -> infer_fn exp subexp
       | Some (EQ, range) -> (
           match subexp.desc with
-          | Let (Val (_, _), _) -> infer_letval exp subexp
-          | Let (Rec (_, _, _), _) -> infer_letrec exp subexp
+          | Let _ -> infer_bind exp subexp
           | Bop (Eq, _, _) -> Some ("'a -> 'a -> 'a", range)
           | _ -> failwith "Unreachable")
       | Some (INT 1, range) -> (
           match subexp.desc with
-          | Fst _ -> infer_letrec exp subexp
+          | Fst _ -> infer_pair exp subexp
           | Const (Int 1) -> Some ("int", range)
           | _ -> failwith "Unreachable")
       | Some (INT 2, range) -> (
           match subexp.desc with
-          | Snd _ -> infer_letrec exp subexp
+          | Snd _ -> infer_pair exp subexp
           | Const (Int 2) -> Some ("int", range)
           | _ -> failwith "Unreachable")
-      | Some (DOT, range) | Some (COMMA, range) -> infer_letrec exp subexp
+      | Some (DOT, range) | Some (COMMA, range) -> infer_pair exp subexp
       | Some (token, range) -> (
           match string_of_token token with "" -> None | s -> Some (s, range))
       | _ -> None)
