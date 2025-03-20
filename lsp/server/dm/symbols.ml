@@ -95,7 +95,7 @@ let lexbuf_to_symbols lexbuf ast =
 
   let search_id (id : string) (range : Range.t) (exp : Syntax.expr) =
     match exp.desc with
-    | Let (Val (x, e1), e2) ->
+    | Let (Val (x, e1), e2) when id = x ->
         let r = Range.from_location exp.loc in
         let sln, scl = r.start.ln, r.start.col in
         let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
