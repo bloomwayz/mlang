@@ -88,9 +88,10 @@ let lexbuf_to_symbols lexbuf ast =
   let acc = ref [] in
 
   let append (name, kind, range, selectionRange) =
-    let kind = SymbolKind.to_int kind in
-    let sym = DocumentSymbols.create_sym ~name ~kind ~range ~selectionRange in
-    DocumentSymbols.append acc sym
+    if Range.contains range selectionRange then
+      let kind = SymbolKind.to_int kind in
+      let sym = DocumentSymbols.create_sym ~name ~kind ~range ~selectionRange in
+      DocumentSymbols.append acc sym
   in
 
   let search_id (id : string) (range : Range.t) (exp : Syntax.expr) =
