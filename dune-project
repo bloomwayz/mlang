@@ -32,6 +32,7 @@
   (ocaml-base-compiler
    (>= 5.2.0))
   ocaml-compiler-libs
+  alcotest
   (core
    (>= 0.17.1))
   (core_unix
