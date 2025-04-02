@@ -3,22 +3,16 @@
  * Type Checker Interface File
  *)
 
-type var = string
+module Tyenv : sig
+  type t
+  val empty : t
+end
 
-type ty = 
-  | Int
-  | Bool
-  | String
-  | Pair of ty * ty
-  | Loc of ty
-  | Arrow of ty * ty
-  | Var of var
+type ty
+type subs = ty -> ty
 
-type ty_env
-type subst = ty -> ty
-
-val empty_tyenv : ty_env
+val new_var : unit -> ty
 val string_of_ty : ty -> string
 val m_ty_of_ty : ty -> Syntax.typ
-val infer : ty_env ref -> ty -> Syntax.expr -> subst
+val infer : Tyenv.t -> ty -> Syntax.expr -> (Tyenv.t * subs)
 val check : Syntax.expr -> Syntax.typ
