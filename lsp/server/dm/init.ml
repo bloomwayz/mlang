@@ -74,8 +74,8 @@ module ServerCapabilities = struct
       ~(completionProvider : completionOptions) ~(hoverProvider : bool)
       ~(codeLensProvider : codeLensOptions) ~(foldingRangeProvider : bool)
       ~(semanticTokensProvider : semanticTokensOptions)
-      ~(diagnosticProvider : diagnosticOptions)
-      ~(documentSymbolProvider : bool) : t =
+      ~(diagnosticProvider : diagnosticOptions) ~(documentSymbolProvider : bool)
+      : t =
     {
       textDocumentSync;
       completionProvider;
@@ -84,7 +84,7 @@ module ServerCapabilities = struct
       foldingRangeProvider;
       semanticTokensProvider;
       diagnosticProvider;
-      documentSymbolProvider
+      documentSymbolProvider;
     }
 end
 

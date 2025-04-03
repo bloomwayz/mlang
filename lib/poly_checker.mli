@@ -5,6 +5,7 @@
 
 module Tyenv : sig
   type t
+
   val empty : t
 end
 
@@ -14,5 +15,5 @@ type subs = ty -> ty
 val new_var : unit -> ty
 val string_of_ty : ty -> string
 val m_ty_of_ty : ty -> Syntax.typ
-val infer : Tyenv.t -> ty -> Syntax.expr -> (Tyenv.t * subs)
+val infer : Tyenv.t -> ty -> Syntax.expr -> Tyenv.t * subs
 val check : Syntax.expr -> Syntax.typ

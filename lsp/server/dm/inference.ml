@@ -15,9 +15,7 @@ let check_top (exp : Syntax.expr) : Poly_checker.ty option =
   let open Poly_checker in
   let tyenv = Tyenv.empty in
   let a = new_var () in
-  match infer tyenv a exp with
-  | _, subs -> Some (subs a)
-  | exception _ -> None
+  match infer tyenv a exp with _, subs -> Some (subs a) | exception _ -> None
 
 let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let open Poly_checker in
@@ -26,13 +24,11 @@ let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let tyenv', _ = infer tyenv a top in
   let b = new_var () in
   (snd (infer tyenv' b sub)) b
-  
+
 let string_of_cnt n =
   let base = Char.code 'a' in
-  if n < 26 then
-    Printf.sprintf "'%c" (Char.chr (base + n))
-  else
-    Printf.sprintf "'%c%d" (Char.chr (base + n mod 26)) (n / 26)
+  if n < 26 then Printf.sprintf "'%c" (Char.chr (base + n))
+  else Printf.sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
 
 let undisclose s =
   let count = ref 0 in
@@ -43,7 +39,8 @@ let undisclose s =
         let sub = Str.matched_string s in
         let subr = Str.regexp sub in
         let s = Str.global_replace subr (string_of_cnt !count) s in
-      incr count; collect s (i + 1)
+        incr count;
+        collect s (i + 1)
     | exception Not_found -> s
   in
   collect s 0
@@ -154,16 +151,15 @@ let infer_fn (top : expr) (sub : expr) =
 
 let infer_bind (top : expr) (sub : expr) =
   let open Poly_checker in
-
-  let fexp, e1 = (
+  let fexp, e1 =
     match sub.desc with
-    | Let (Val (x, e1), _) -> e1, e1
-    | Let (Rec (f, x, e1), e2) -> { desc = Fn (x, e1); loc = sub.loc }, e1
-    | _ -> failwith "not a let-bind" )
+    | Let (Val (x, e1), _) -> (e1, e1)
+    | Let (Rec (f, x, e1), e2) -> ({ desc = Fn (x, e1); loc = sub.loc }, e1)
+    | _ -> failwith "not a let-bind"
   in
 
   match check_sub top fexp with
-  | fty -> 
+  | fty ->
       let fty_str = string_of_ty fty in
       let r = Range.from_location sub.loc in
       let sln, scl = (r.start.ln, r.start.col) in
@@ -172,34 +168,33 @@ let infer_bind (top : expr) (sub : expr) =
       Some (fty_str, r')
   | exception _ -> None
 
-let infer_branch (top : expr) (sub : expr) (tko : (Parser.token * Range.t) option) =
+let infer_branch (top : expr) (sub : expr)
+    (tko : (Parser.token * Range.t) option) =
   let open Poly_checker in
   match sub.desc with
   | If (e1, e2, e3) -> (
       match tko with
       | Some (IF, if_range) ->
           let e1_range = Range.from_location e1.loc in
-          let start, end_ = if_range.start, e1_range.end_ in
+          let start, end_ = (if_range.start, e1_range.end_) in
           let range = Range.create ~start ~end_ in
           Some ("bool", range)
-      | Some (THEN, th_range) ->
+      | Some (THEN, th_range) -> (
           let e2_range = Range.from_location e2.loc in
-          let start, end_ = th_range.start, e2_range.end_ in
+          let start, end_ = (th_range.start, e2_range.end_) in
           let range = Range.create ~start ~end_ in
-          (match check_sub top e2 with
+          match check_sub top e2 with
           | x -> Some (string_of_ty x, range)
           | exception _ -> None)
-      | Some (ELSE, el_range) ->
+      | Some (ELSE, el_range) -> (
           let e3_range = Range.from_location e3.loc in
-          let start, end_ = el_range.start, e3_range.end_ in
+          let start, end_ = (el_range.start, e3_range.end_) in
           let range = Range.create ~start ~end_ in
-          (match check_sub top e3 with
+          match check_sub top e3 with
           | x -> Some (string_of_ty x, range)
           | exception _ -> None)
-      | _ -> None
-    )
+      | _ -> None)
   | _ -> None
-
 
 let infer_others (top : expr) (sub : expr) =
   let open Poly_checker in
@@ -213,8 +208,8 @@ let infer_par (top : expr) (sub : expr) =
     match sub.desc with
     | Pair _ -> sub
     | _ ->
-      let subexps = traverse_ast sub [] in
-      List.nth (List.rev subexps) 0
+        let subexps = traverse_ast sub [] in
+        List.nth (List.rev subexps) 0
   in
   infer_others top glb
 
@@ -224,11 +219,13 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   let token_opt = token_at_pos pgmtxt curr_pos in
   let subexp_opt = subexp_at_pos exp curr_pos in
 
-  match token_opt, subexp_opt with
+  match (token_opt, subexp_opt) with
   | _, None -> None
   | Some (ID x, range), Some subexp -> infer_var x exp subexp range
-  | Some (VAL, range), Some subexp | Some (REC, range), Some subexp -> infer_bind exp subexp
-  | Some (FN, range), Some subexp | Some (RARROW, range), Some subexp -> infer_fn exp subexp
+  | Some (VAL, range), Some subexp | Some (REC, range), Some subexp ->
+      infer_bind exp subexp
+  | Some (FN, range), Some subexp | Some (RARROW, range), Some subexp ->
+      infer_fn exp subexp
   | Some (EQ, range), Some subexp -> (
       match subexp.desc with
       | Let _ -> infer_bind exp subexp
@@ -246,10 +243,16 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
       | _ -> failwith "Unreachable")
   | Some (LPAREN, _), Some subexp | Some (RPAREN, _), Some subexp ->
       infer_par exp subexp
-  | Some (IF, _), Some subexp | Some (THEN, _), Some subexp | Some (ELSE, _), Some subexp ->
+  | Some (IF, _), Some subexp
+  | Some (THEN, _), Some subexp
+  | Some (ELSE, _), Some subexp ->
       infer_branch exp subexp token_opt
-  | Some (LET, _), Some subexp | Some (IN, _), Some subexp | Some (END, _), Some subexp
-  | Some (DOT, _), Some subexp | Some (COMMA, _), Some subexp | Some (SEMI, _), Some subexp ->
+  | Some (LET, _), Some subexp
+  | Some (IN, _), Some subexp
+  | Some (END, _), Some subexp
+  | Some (DOT, _), Some subexp
+  | Some (COMMA, _), Some subexp
+  | Some (SEMI, _), Some subexp ->
       infer_others exp subexp
   | Some (token, range), Some subexp -> (
       match string_of_token token with "" -> None | s -> Some (s, range))
