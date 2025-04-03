@@ -268,9 +268,9 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   match (token_opt, subexp_opt) with
   | _, None -> None
   | Some (ID x, range), Some subexp -> infer_var x exp subexp range
-  | Some (VAL, range), Some subexp | Some (REC, range), Some subexp ->
+  | Some ((VAL | REC), range), Some subexp ->
       infer_bind exp subexp
-  | Some (FN, range), Some subexp | Some (RARROW, range), Some subexp ->
+  | Some ((FN | RARROW), range), Some subexp ->
       infer_fn exp subexp
   | Some (EQ, range), Some subexp -> (
       match subexp.desc with
@@ -287,18 +287,11 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
       | Snd _ -> infer_others exp subexp
       | Const (Int 2) -> Some ("int", range)
       | _ -> failwith "Unreachable")
-  | Some (LPAREN, _), Some subexp | Some (RPAREN, _), Some subexp ->
+  | Some ((LPAREN | RPAREN), _), Some subexp ->
       infer_par exp subexp
-  | Some (IF, _), Some subexp
-  | Some (THEN, _), Some subexp
-  | Some (ELSE, _), Some subexp ->
+  | Some ((IF | THEN | ELSE), _), Some subexp ->
       infer_branch exp subexp token_opt
-  | Some (LET, _), Some subexp
-  | Some (IN, _), Some subexp
-  | Some (END, _), Some subexp
-  | Some (DOT, _), Some subexp
-  | Some (COMMA, _), Some subexp
-  | Some (SEMI, _), Some subexp ->
+  | Some ((LET | IN | END | DOT | COMMA | SEMI), _), Some subexp ->
       infer_others exp subexp
   | Some (token, range), Some subexp -> (
       match string_of_token token with "" -> None | s -> Some (s, range))
