@@ -228,14 +228,13 @@ let infer_par (top : expr) (sub : expr) =
 
 let infer_space (top : expr) (sub : expr) =
   let open Poly_checker in
-  let range = Range.from_location sub.loc in
   match sub.desc with
-  | Let (Val (x, e1), e2) -> (
-      match check_sub top e1 with
-      | x -> Some (string_of_ty x, range)
-      | exception _ -> None)
-  | Let (Rec (f, x, e1), e2) -> (
-      match check_sub top e1 with
+  | Let (Val (x, e1), _) | Let (Rec (_, x, e1), _) ->
+      let r = Range.from_location sub.loc in
+      let sln, scl = r.start.ln, r.start.col in
+      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
+      let range = Range.from_tuples (sln, scl) (eln, ecl) in
+      (match check_sub top e1 with
       | x -> Some (string_of_ty x, range)
       | exception _ -> None)
   | _ -> infer_others top sub
