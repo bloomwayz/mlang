@@ -23,7 +23,18 @@ let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let a = new_var () in
   let tyenv', _ = infer tyenv a top in
   let b = new_var () in
-  (snd (infer tyenv' b sub)) b
+  let _, subs = infer tyenv' b sub in
+  subs b
+
+let check_var (top : Syntax.expr) (sub : Syntax.expr) (id : string) :
+    Poly_checker.ty =
+  let open Poly_checker in
+  let tyenv = Tyenv.empty in
+  let a = new_var () in
+  let tyenv', _ = infer tyenv a top in
+  let b = new_var () in
+  let tyenv'', subs = infer tyenv' b sub in
+  Tyenv.find id tyenv''
 
 let string_of_cnt n =
   let base = Char.code 'a' in
@@ -126,18 +137,16 @@ let infer_var (id : string) (top : expr) (sub : expr) (range : Range.t) =
         Some (ty, range)
     | Let (Rec (f, x, e1), e2) ->
         let fexp = { desc = Fn (x, e1); loc = sub.loc } in
-        let fty = string_of_ty (check_sub top fexp) in
-        if id = f then Some (fty, range)
+        if id = f then
+          let ty = string_of_ty (check_sub top fexp) in
+          Some (ty, range)
         else if id = x then
-          let r = Str.regexp {| -> |} in
-          let i = Str.search_forward r fty 0 in
-          Some (String.sub fty 0 i, range)
+          let ty = string_of_ty (check_var top fexp id) in
+          Some (ty, range)
         else None
     | Fn (x, e) ->
-        let fty = string_of_ty (check_sub top sub) in
-        let r = Str.regexp {| -> |} in
-        let i = Str.search_forward r fty 0 in
-        Some (String.sub fty 0 i, range)
+        let ty = string_of_ty (check_var top sub x) in
+        Some (ty, range)
     | _ -> None
   with _ -> None
 

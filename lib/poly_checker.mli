@@ -5,14 +5,15 @@
 
 exception Unimplemented
 
+type ty
+type subs = ty -> ty
+
 module Tyenv : sig
   type t
 
   val empty : t
+  val find : Syntax.id -> t -> ty
 end
-
-type ty
-type subs = ty -> ty
 
 val new_var : unit -> ty
 val string_of_ty : ty -> string
