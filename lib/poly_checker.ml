@@ -1,6 +1,8 @@
 open Syntax
 open Interp
 
+exception Unimplemented
+
 type var = string
 
 type ty =
@@ -135,7 +137,7 @@ let apply_subs_in_env ~(subs : subs) : Tyenv.t -> Tyenv.t =
   List.map (fun (x, tyscm) -> (x, subs_scheme subs tyscm))
 
 let rec infer : Tyenv.t -> ty -> Syntax.expr -> Tyenv.t * subs =
-  fun _ _ _ -> raise (Interp.Type_error "Type checker unimplemented")
+  fun _ _ _ -> raise Unimplemented
 
 let check (exp : Syntax.expr) : Syntax.typ =
   let tyenv = Tyenv.empty in

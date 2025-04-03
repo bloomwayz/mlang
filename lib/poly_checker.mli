@@ -3,6 +3,8 @@
  * Type Checker Interface File
  *)
 
+exception Unimplemented
+
 module Tyenv : sig
   type t
 

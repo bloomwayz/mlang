@@ -25,8 +25,9 @@ end
 let sprint_top ast =
   let open Lang_m.Poly_checker in
   match check_top ast with
-  | Some ty -> undisclose (string_of_ty ty)
-  | None -> "Type error"
+  | ty -> undisclose (string_of_ty ty)
+  | exception Unimplemented -> "Type checker unimplemented"
+  | exception _ -> "Type error"
 
 let get_title : States.pstate -> string = function
   | Ast ast -> sprint_top ast

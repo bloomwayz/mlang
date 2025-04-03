@@ -11,11 +11,11 @@ open Document
 open Lang_m
 open Lang_m.Syntax
 
-let check_top (exp : Syntax.expr) : Poly_checker.ty option =
+let check_top (exp : Syntax.expr) : Poly_checker.ty =
   let open Poly_checker in
   let tyenv = Tyenv.empty in
   let a = new_var () in
-  match infer tyenv a exp with _, subs -> Some (subs a) | exception _ -> None
+  (snd (infer tyenv a exp)) a
 
 let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let open Poly_checker in
@@ -116,28 +116,30 @@ let token_with_lexbuf (lexbuf : Lexing.lexbuf) (pos : Position.t) =
 
 let infer_var (id : string) (top : expr) (sub : expr) (range : Range.t) =
   let open Poly_checker in
-  match sub.desc with
-  | Var x ->
-      let ty = string_of_ty (check_sub top sub) in
-      Some (ty, range)
-  | Let (Val (x, e1), _) ->
-      let ty = string_of_ty (check_sub top e1) in
-      Some (ty, range)
-  | Let (Rec (f, x, e1), e2) ->
-      let fexp = { desc = Fn (x, e1); loc = sub.loc } in
-      let fty = string_of_ty (check_sub top fexp) in
-      if id = f then Some (fty, range)
-      else if id = x then
+  try
+    match sub.desc with
+    | Var x ->
+        let ty = string_of_ty (check_sub top sub) in
+        Some (ty, range)
+    | Let (Val (x, e1), _) ->
+        let ty = string_of_ty (check_sub top e1) in
+        Some (ty, range)
+    | Let (Rec (f, x, e1), e2) ->
+        let fexp = { desc = Fn (x, e1); loc = sub.loc } in
+        let fty = string_of_ty (check_sub top fexp) in
+        if id = f then Some (fty, range)
+        else if id = x then
+          let r = Str.regexp {| -> |} in
+          let i = Str.search_forward r fty 0 in
+          Some (String.sub fty 0 i, range)
+        else None
+    | Fn (x, e) ->
+        let fty = string_of_ty (check_sub top sub) in
         let r = Str.regexp {| -> |} in
         let i = Str.search_forward r fty 0 in
         Some (String.sub fty 0 i, range)
-      else None
-  | Fn (x, e) ->
-      let fty = string_of_ty (check_sub top sub) in
-      let r = Str.regexp {| -> |} in
-      let i = Str.search_forward r fty 0 in
-      Some (String.sub fty 0 i, range)
-  | _ -> None
+    | _ -> None
+  with _ -> None
 
 let token_at_pos (raw : string) (pos : Position.t) =
   match Lexing.from_string raw with

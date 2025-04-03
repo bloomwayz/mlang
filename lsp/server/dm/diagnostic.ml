@@ -29,9 +29,11 @@ end
 
 let get_rng_msg : States.pstate -> (Range.t * string) option = function
   | Ast ast -> (
+      let open Lang_m.Poly_checker in
       match check_top ast with
-      | Some ty -> None
-      | None -> Some (Range.from_tuples (0, 0) (0, 0), "Type error"))
+      | ty -> None
+      | exception Unimplemented -> Some (Range.from_tuples (0, 0) (0, 0), "Type checker unimplemented")
+      | exception _ -> Some (Range.from_tuples (0, 0) (0, 0), "Type error"))
   | Fail (msg, ln, _) ->
       let rng = Range.from_tuples (ln, 0) (ln, 100) in
       Some (rng, msg)
