@@ -226,6 +226,20 @@ let infer_par (top : expr) (sub : expr) =
   in
   infer_others top glb
 
+let infer_space (top : expr) (sub : expr) =
+  let open Poly_checker in
+  let range = Range.from_location sub.loc in
+  match sub.desc with
+  | Let (Val (x, e1), e2) -> (
+      match check_sub top e1 with
+      | x -> Some (string_of_ty x, range)
+      | exception _ -> None)
+  | Let (Rec (f, x, e1), e2) -> (
+      match check_sub top e1 with
+      | x -> Some (string_of_ty x, range)
+      | exception _ -> None)
+  | _ -> infer_others top sub
+
 let print_token : (Parser.token * Range.t) option -> string = function
   | Some (ID x, _) -> "ID: " ^ x
   | Some (VAL, _) -> "VAL"
@@ -305,4 +319,4 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
       infer_others exp subexp
   | Some (token, range), Some subexp -> (
       match string_of_token token with "" -> None | s -> Some (s, range))
-  | None, Some subexp -> infer_others exp subexp
+  | None, Some subexp -> infer_space exp subexp
