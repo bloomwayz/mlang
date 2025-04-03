@@ -274,15 +274,15 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   let pgmtxt = st.rawState in
   let token_opt = token_at_pos pgmtxt curr_pos in
   let subexp_opt = subexp_at_pos exp curr_pos in
-  let _ = Printf.eprintf "%s\t%s\n" (print_token token_opt) (print_expr subexp_opt) in
+  let _ =
+    Printf.eprintf "%s\t%s\n" (print_token token_opt) (print_expr subexp_opt)
+  in
 
   match (token_opt, subexp_opt) with
   | _, None -> None
   | Some (ID x, range), Some subexp -> infer_var x exp subexp range
-  | Some ((VAL | REC), range), Some subexp ->
-      infer_bind exp subexp
-  | Some ((FN | RARROW), range), Some subexp ->
-      infer_fn exp subexp
+  | Some ((VAL | REC), range), Some subexp -> infer_bind exp subexp
+  | Some ((FN | RARROW), range), Some subexp -> infer_fn exp subexp
   | Some (EQ, range), Some subexp -> (
       match subexp.desc with
       | Let _ -> infer_bind exp subexp
@@ -298,8 +298,7 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
       | Snd _ -> infer_others exp subexp
       | Const (Int 2) -> Some ("int", range)
       | _ -> failwith "Unreachable")
-  | Some ((LPAREN | RPAREN), _), Some subexp ->
-      infer_par exp subexp
+  | Some ((LPAREN | RPAREN), _), Some subexp -> infer_par exp subexp
   | Some ((IF | THEN | ELSE), _), Some subexp ->
       infer_branch exp subexp token_opt
   | Some ((LET | IN | END | DOT | COMMA | SEMI), _), Some subexp ->
