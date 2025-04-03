@@ -108,7 +108,9 @@ let token_with_lexbuf (lexbuf : Lexing.lexbuf) (pos : Position.t) =
     | EOF -> None
     | _ ->
         let range = Range.from_lexbuf lexbuf in
-        if Range.contains_p range pos then Some (token, range) else inner ()
+        if Range.contains_p range pos then Some (token, range)
+        else if pos < range.start then None
+        else inner ()
   in
   inner ()
 
