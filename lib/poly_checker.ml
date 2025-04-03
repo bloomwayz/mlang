@@ -1,14 +1,9 @@
-(*
- * SNU 4190.310 Programming Languages
- * Type Checker Skeleton
- *)
-
 open Syntax
 open Interp
 
 type var = string
 
-type ty = 
+type ty =
   | Int
   | Bool
   | String
@@ -16,7 +11,8 @@ type ty =
   | Loc of ty
   | Arrow of ty * ty
   | Var of var
-  (* Modify, or add more if needed *)
+
+type ty_scheme = Simple of ty | Generalized of var list * ty
 
 let rec string_of_ty : ty -> string =
   let open Printf in
@@ -24,8 +20,19 @@ let rec string_of_ty : ty -> string =
   | Int -> "int"
   | Bool -> "bool"
   | String -> "string"
-  | Pair (ty1, ty2) -> sprintf "(%s * %s)" (string_of_ty ty1) (string_of_ty ty2)
-  | Loc ty -> string_of_ty ty ^ " ref"
+  | Pair (ty1, ty2) -> (
+      match (ty1, ty2) with
+      | Arrow _, Arrow _ ->
+          sprintf "((%s) * (%s))" (string_of_ty ty1) (string_of_ty ty2)
+      | Arrow _, _ ->
+          sprintf "((%s) * %s)" (string_of_ty ty1) (string_of_ty ty2)
+      | _, Arrow _ ->
+          sprintf "(%s * (%s))" (string_of_ty ty1) (string_of_ty ty2)
+      | _, _ -> sprintf "(%s * %s)" (string_of_ty ty1) (string_of_ty ty2))
+  | Loc ty -> (
+      match ty with
+      | Arrow _ -> sprintf "(%s) loc" (string_of_ty ty)
+      | _ -> string_of_ty ty ^ " loc")
   | Arrow (ty1, ty2) -> sprintf "%s -> %s" (string_of_ty ty1) (string_of_ty ty2)
   | Var a -> a
 
@@ -38,18 +45,19 @@ let rec m_ty_of_ty : ty -> Syntax.typ = function
   | Arrow (ty1, ty2) -> T_arrow (m_ty_of_ty ty1, m_ty_of_ty ty2)
   | Var _ as ty -> failwith ("Incomplete " ^ string_of_ty ty)
 
-type ty_scheme =
-  | SimpleTyp of ty
-  | GenTyp of (var list * ty)
+module Tyenv = struct
+  type t = (id * ty_scheme) list
+  let empty = []
+end
 
-type ty_env = (Syntax.id * ty_scheme) list
-let empty_tyenv : ty_env = []
+(* Generate a fresh symbol for type variables *)
+let gen_sym : unit -> var =
+  let count = ref 0 in
+  fun () ->
+    incr count;
+    "'a" ^ string_of_int !count
 
-let count = ref 0 
-
-let new_var () = 
-  let _ = count := !count +1 in
-  "x_" ^ (string_of_int !count)
+let new_var () = Var (gen_sym ())
 
 (* Definitions related to free type variable *)
 
@@ -68,67 +76,80 @@ let rec ftv_of_typ : ty -> var list = function
   | Var v -> [v]
 
 let ftv_of_scheme : ty_scheme -> var list = function
-  | SimpleTyp t -> ftv_of_typ t
-  | GenTyp (alphas, t) -> sub_ftv (ftv_of_typ t) alphas 
+  | Simple t -> ftv_of_typ t
+  | Generalized (alphas, t) -> sub_ftv (ftv_of_typ t) alphas 
 
-let ftv_of_env : ty_env -> var list = fun tyenv ->
+let ftv_of_env : Tyenv.t -> var list = fun tyenv ->
   List.fold_left 
     (fun acc_ftv (id, tyscm) -> union_ftv acc_ftv (ftv_of_scheme tyscm))
-    [] tyenv 
+    [] tyenv
 
 (* Generalize given type into a type scheme *)
-let generalize : ty_env -> ty -> ty_scheme = fun tyenv t ->
+let generalize : Tyenv.t -> ty -> ty_scheme = fun tyenv t ->
   let env_ftv = ftv_of_env tyenv in
   let typ_ftv = ftv_of_typ t in
   let ftv = sub_ftv typ_ftv env_ftv in
   if List.length ftv = 0 then
-    SimpleTyp t
+    Simple t
   else
-    GenTyp(ftv, t)
+    Generalized (ftv, t)
 
 (* Definitions related to substitution *)
 
-type subst = ty -> ty
+type subs = ty -> ty
 
-let empty_subst : subst = fun t -> t
+let empty_subs : subs = fun ty -> ty
 
-let make_subst : var -> ty -> subst = fun x t ->
-  let rec subs t' = 
-    match t' with
-    | Var x' -> if (x = x') then t else t'
+let make_subs (a : var) (ty : ty) : subs =
+  let rec subs = function
+    | (Int | Bool | String) as t -> t
     | Pair (t1, t2) -> Pair (subs t1, subs t2)
-    | Loc t'' -> Loc (subs t'')
+    | Loc t -> Loc (subs t)
     | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
-    | Int | Bool | String -> t'
-  in subs
+    | Var b when a = b -> ty
+    | Var _ as t -> t
+  in
+  subs
 
-let (@@) s1 s2 = (fun t -> s1 (s2 t)) (* substitution composition *)
+(* a |-> t is a substitution from a to t *)
+let ( |-> ) = make_subs
+let compose_subs (s1 : subs) (s2 : subs) : subs = fun t -> s2 (s1 t)
 
-let subst_scheme : subst -> ty_scheme -> ty_scheme = fun subs tyscm ->
+(* s2 << s1 means that s1 is applied first, then s2 *)
+let ( << ) s2 s1 = compose_subs s1 s2
+
+let subs_scheme (subs : subs) (tyscm : ty_scheme) : ty_scheme =
   match tyscm with
-  | SimpleTyp t -> SimpleTyp (subs t)
-  | GenTyp (alphas, t) ->
+  | Simple t -> Simple (subs t)
+  | Generalized (alphas, t) ->
     (* S (\all a.t) = \all b.S{a->b}t  (where b is new variable) *)
-    let betas = List.map (fun _ -> new_var()) alphas in
+    let betas = List.map (fun _ -> gen_sym ()) alphas in
     let s' =
       List.fold_left2
-        (fun acc_subst alpha beta -> make_subst alpha (Var beta) @@ acc_subst)
-        empty_subst alphas betas
+        (fun acc alpha beta -> make_subs alpha (Var beta) << acc)
+        empty_subs alphas betas
     in
-    GenTyp (betas, subs (s' t))
+    Generalized (betas, subs (s' t))
 
-let subst_env : subst -> ty_env -> ty_env = fun subs tyenv ->
-  List.map (fun (x, tyscm) -> (x, subst_scheme subs tyscm)) tyenv
+let apply_subs_in_env ~(subs : subs) : Tyenv.t -> Tyenv.t =
+  List.map (fun (x, tyscm) -> (x, subs_scheme subs tyscm))
 
-(* TODO
- * Implement this function;
- * Do not modify the signature, or the Language Server will not work
- *)
-let infer : ty_env ref -> ty -> Syntax.expr -> subst =
-  fun _ _ _ -> empty_subst
+let rec infer : Tyenv.t -> ty -> Syntax.expr -> Tyenv.t * subs =
+  fun _ _ _ -> raise (Interp.Type_error "Type checker unimplemented")
 
 let check (exp : Syntax.expr) : Syntax.typ =
-  let tyenv = ref empty_tyenv in
-  let a = Var (new_var ()) in
-  let ty = (infer tyenv a exp) a in
+  let tyenv = Tyenv.empty in
+  let a = new_var () in
+  let _, subs = infer tyenv a exp in
+  let ty = subs a in
   m_ty_of_ty ty
+
+let rec string_of_typ (ty : Syntax.typ) : string =
+  match ty with
+  | T_int -> "int"
+  | T_bool -> "bool"
+  | T_string -> "string"
+  | T_pair (tau1, tau2) ->
+      "(" ^ string_of_typ tau1 ^ ", " ^ string_of_typ tau2 ^ ")"
+  | T_loc tau -> string_of_typ tau ^ " loc"
+  | T_arrow (tau1, tau2) -> string_of_typ tau1 ^ " -> " ^ string_of_typ tau2
