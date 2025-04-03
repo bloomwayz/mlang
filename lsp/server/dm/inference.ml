@@ -211,11 +211,10 @@ let infer_par (top : expr) (sub : expr) =
     | Pair _ -> sub
     | _ ->
         let subexps = traverse_ast sub [] in
-        List.nth (List.rev subexps) 0
+        List.nth (List.rev subexps) 1
   in
   infer_others top glb
 
-(* 
 let print_token : (Parser.token * Range.t) option -> string = function
   | Some (ID x, _) -> "ID: " ^ x
   | Some (VAL, _) -> "VAL"
@@ -258,7 +257,6 @@ let print_expr : expr option -> string = function
       | Fst _ -> "Fst"
       | Snd _ -> "Snd")
   | None -> "Null"
-*)
 
 let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
     (string * Range.t) option =
