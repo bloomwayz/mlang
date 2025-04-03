@@ -215,11 +215,57 @@ let infer_par (top : expr) (sub : expr) =
   in
   infer_others top glb
 
+(* 
+let print_token : (Parser.token * Range.t) option -> string = function
+  | Some (ID x, _) -> "ID: " ^ x
+  | Some (VAL, _) -> "VAL"
+  | Some (REC, _) -> "REC"
+  | Some (FN, _) -> "FN"
+  | Some (RARROW, _) -> "RARR"
+  | Some (EQ, _) -> "EQ"
+  | Some (INT n, _) -> "INT: " ^ string_of_int n
+  | Some (LPAREN, _) -> "LPAR"
+  | Some (RPAREN, _) -> "RPAR"
+  | Some (IF, _) -> "IF"
+  | Some (THEN, _) -> "THEN"
+  | Some (ELSE, _) -> "ELSE"
+  | Some (LET, _) -> "LET"
+  | Some (IN, _) -> "IN"
+  | Some (END, _) -> "END"
+  | Some (DOT, _) -> "DOT"
+  | Some (COMMA, _) -> "COMMA"
+  | Some (SEMI, _) -> "SEMI"
+  | Some (token, _) -> "ETC"
+  | None -> "NULL"
+
+let print_expr : expr option -> string = function
+  | Some { desc; _ } -> (
+      match desc with
+      | Const _ -> "Const"
+      | Var _ -> "Var"
+      | Fn _ -> "Fn"
+      | App _ -> "App"
+      | Let _ -> "Let"
+      | If _ -> "If"
+      | Bop _ -> "Bop"
+      | Read -> "Read"
+      | Write _ -> "Write"
+      | Malloc _ -> "Ref"
+      | Assign _ -> "Asn"
+      | Deref _ -> "Drf"
+      | Seq _ -> "Seq"
+      | Pair _ -> "Pair"
+      | Fst _ -> "Fst"
+      | Snd _ -> "Snd")
+  | None -> "Null"
+*)
+
 let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
     (string * Range.t) option =
   let pgmtxt = st.rawState in
   let token_opt = token_at_pos pgmtxt curr_pos in
   let subexp_opt = subexp_at_pos exp curr_pos in
+  let _ = Printf.eprintf "%s\t%s\n" (print_token token_opt) (print_expr subexp_opt) in
 
   match (token_opt, subexp_opt) with
   | _, None -> None
