@@ -85,11 +85,11 @@ let output_log pref msg id =
 let receive str =
   let yojson = from_string str in
   let obj = obj_of_yojson yojson in
-  let prefix = make_prefix obj in
+  (* let prefix = make_prefix obj in
   let msg = pretty_to_string ~std:true yojson in
   let id = id_of_obj obj in
 
-  output_log prefix msg id;
+  output_log prefix msg id; *)
   obj
 
 (** Output handler **)
@@ -99,7 +99,7 @@ let output_json msg =
   Printf.printf "Content-Length: %d\r\n\r\n%s" size msg
 
 let send obj =
-  let prefix = make_prefix obj in
+  (* let prefix = make_prefix obj in *)
 
   let yojson =
     match obj with
@@ -109,7 +109,7 @@ let send obj =
   in
 
   let msg = pretty_to_string ~std:true yojson in
-  let id = id_of_obj obj in
+  (* let id = id_of_obj obj in *)
 
   output_json msg;
-  output_log prefix msg id
+  (* output_log prefix msg id *)
