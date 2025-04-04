@@ -1,6 +1,6 @@
 (*
  * M Language Server
- * Type Inferer
+ * Type Checker-Language Server Interface
  *
  * 2025 Junyoung Park <jypark@ropas.snu.ac.kr>
  *)
@@ -287,9 +287,9 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   let pgmtxt = st.rawState in
   let token_opt = token_at_pos pgmtxt curr_pos in
   let subexp_opt = subexp_at_pos exp curr_pos in
-  let _ =
+  (* let _ =
     Printf.eprintf "%s\t%s\n" (print_token token_opt) (print_expr subexp_opt)
-  in
+  in *)
 
   match (token_opt, subexp_opt) with
   | _, None -> None
