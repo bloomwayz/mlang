@@ -233,7 +233,7 @@ let infer_space (top : expr) (sub : expr) =
       let r = Range.from_location sub.loc in
       let sln, scl = r.start.ln, r.start.col in
       let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
-      let range = Range.from_tuples (sln, scl) (eln, ecl) in
+      let range = Range.from_tuples (sln, scl) (eln - 1, ecl) in
       (match check_sub top e1 with
       | x -> Some (string_of_ty x, range)
       | exception _ -> None)
