@@ -41,6 +41,7 @@
    (>= 0.17.0))
   (ppx_jane
    (>= 0.17.0))
+  ppx_yojson_conv
   (menhir
    (>= 3.0)))
  (tags ("Programming Language")))
