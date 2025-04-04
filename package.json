@@ -62,8 +62,8 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -b",
         "watch": "tsc -b -w",
-        "lint": "eslint ./lsp/client/src ./server/src --ext .ts,.tsx",
-        "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+        "lint": "eslint ./lsp/client/src --ext .ts,.tsx",
+        "postinstall": "cd lsp/client && npm install && cd ...",
         "test": "sh ./scripts/e2e.sh"
     },
     "devDependencies": {
