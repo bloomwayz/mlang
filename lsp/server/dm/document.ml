@@ -51,7 +51,7 @@ module States = struct
   let rec convert (exp : Syntax.expr) (env : Aenv.t) =
     match exp.desc with
     | Const _ | Read -> exp
-    | Var id -> { exp with desc = Var id }
+    | Var id -> { exp with desc = Var (env id) }
     | Fn (x, e) ->
       let s, env' = Aenv.bind_new env x in
       let e' = convert e env' in
