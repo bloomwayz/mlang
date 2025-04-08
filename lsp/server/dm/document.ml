@@ -38,9 +38,10 @@ module States = struct
   and state = {
     rawState : string;
     parsedState : pstate;
-    typeState : Tyenv.t;
+    typeState : tstate;
   }
   and pstate = Ast of Syntax.expr | Fail of string * int * int
+  and tstate = Chk of Tyenv.t | Prb of string
 
   let init () : t = Hashtbl.create 39
 
@@ -115,25 +116,29 @@ module States = struct
         let pos = lexbuf.lex_curr_p in
         Fail (msg, pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1)
 
-  let get_tstate (pstate : pstate) : Tyenv.t =
+  let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
     match pstate with
     | Ast exp ->
       let tyenv = Tyenv.empty in
       let a = new_var () in
-      fst (infer tyenv a exp)
-    | Fail _ -> Tyenv.empty
+      (match infer tyenv a exp with
+      | tyenv', _ -> Chk tyenv'
+      | exception _ -> Prb "Type error")
+    | Fail (msg, _, _) -> Prb msg
 
   (* synchronize functions *)
   let update (states : t) (uri : string) (raw : string) =
     let uri_len = String.length uri in
     let fname = String.sub uri 8 (uri_len - 8) in
-    let parsed = get_pstate fname raw in
-    let tyenv = get_tstate parsed in
+    let _ = Printf.eprintf "===== Parsing Starts =====\n" in
+    let pstate = get_pstate fname raw in
+    let _ = Printf.eprintf "===== Infering Starts =====\n" in
+    let tstate = get_tstate pstate in
     let st = {
       rawState = raw;
-      parsedState = parsed;
-      typeState = tyenv;
+      parsedState = pstate;
+      typeState = tstate;
     }
     in
 
@@ -175,8 +180,10 @@ let get_change params =
 (** document synchronization **)
 
 let on_did_open params =
+  let _ = Printf.eprintf "===== Server Initialized =====\n" in
   let uri = get_uri params in
   let raw = get_text params in
+  let _ = Printf.eprintf "===== Update Starts =====\n" in
   states @+ (uri, raw)
 
 let on_did_change params =
