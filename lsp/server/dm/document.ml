@@ -6,6 +6,7 @@
  *)
 
 open Yojson.Safe.Util
+open Range
 open Lang_m
 
 module Tyenv = Poly_checker.Tyenv
@@ -40,8 +41,13 @@ module States = struct
     parsedState : pstate;
     typeState : tstate;
   }
-  and pstate = Ast of Syntax.expr | Fail of string * int * int
-  and tstate = Chk of Tyenv.t | Prb of string
+  and pstate = Ast of Syntax.expr | Fail of string * Range.t
+  and tstate =
+    | Checked of Tyenv.t
+    | Typerr of string
+    | Otherr of string * Range.t
+
+  exception Lookup_error
 
   let init () : t = Hashtbl.create 39
 
@@ -108,13 +114,12 @@ module States = struct
       Ast (convert ast aenv)
     | exception Parser.Error ->
         let open Lexing in
-        let pos = lexbuf.lex_curr_p in
-        let _, ln, col = Location.get_pos_info pos in
-        Fail ("Parsing Error", ln, col)
+        let range = Range.from_lexbuf lexbuf in
+        Fail ("Parsing Error", range)
     | exception Lexer.SyntaxError msg ->
         let open Lexing in
-        let pos = lexbuf.lex_curr_p in
-        Fail (msg, pos.pos_lnum, pos.pos_cnum - pos.pos_bol + 1)
+        let range = Range.from_lexbuf lexbuf in
+        Fail (msg, range)
 
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
@@ -123,9 +128,10 @@ module States = struct
       let tyenv = Tyenv.empty in
       let a = new_var () in
       (match infer tyenv a exp with
-      | tyenv', _ -> Chk tyenv'
-      | exception _ -> Prb "Type error")
-    | Fail (msg, _, _) -> Prb msg
+      | tyenv', _ -> Tyenv.print tyenv'; Checked tyenv'
+      | exception Unimplemented -> Typerr "Type checker unimplemented"
+      | exception _ -> Typerr "Type error")
+    | Fail (msg, range) -> Otherr (msg, range)
 
   (* synchronize functions *)
   let update (states : t) (uri : string) (raw : string) =
@@ -156,6 +162,9 @@ module States = struct
 
   let find_pstate (states : t) (uri : string) =
     match find states uri with Some st -> Some st.parsedState | None -> None
+
+  let find_tstate (states : t) (uri : string) =
+    match find states uri with Some st -> st.typeState | None -> raise Lookup_error
 end
 
 let ( @+ ) states (uri, raw) = States.update states uri raw
@@ -164,6 +173,7 @@ let states = States.init ()
 let finds = States.find states
 let findr = States.find_rstate states
 let findp = States.find_pstate states
+let findt = States.find_tstate states
 
 (** parse string from params **)
 
