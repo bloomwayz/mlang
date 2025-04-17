@@ -10,7 +10,10 @@ homepage: "https://github.com/bloomwayz/mlang"
 bug-reports: "https://github.com/bloomwayz/mlang/issues"
 depends: [
   "ocaml"
+"menhir"
   "dune" {>= "3.15"}
+"base"
+  "stdio"
   "yojson"
   "ocaml-base-compiler" {>= "5.2.0"}
   "ocaml-compiler-libs"
@@ -18,9 +21,9 @@ depends: [
   "core" {>= "0.17.1"}
   "core_unix" {>= "0.17.0"}
   "string_dict" {>= "0.17.0"}
-  "ppx_jane" {>= "0.17.0"}
+  "yojson"
   "ppx_yojson_conv"
-  "menhir" {>= "3.0"}
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

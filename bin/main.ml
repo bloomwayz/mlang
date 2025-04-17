@@ -1,12 +1,11 @@
-open! Core
+open! Base
+open Stdio
 open Lang_m
-
-exception SyntaxError of string * int * int
 
 let print_position (outx : Out_channel.t) (lexbuf : Lexing.lexbuf) : unit =
   let open Lexing in
   let pos = lexbuf.lex_curr_p in
-  fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+  Out_channel.fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
     (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_with_error (lexbuf : Lexing.lexbuf) : Syntax.expr =
@@ -25,18 +24,33 @@ let get_program (filename : string) : Syntax.expr =
       In_channel.close inx;
       prog
   | exception Parser.Error ->
-      fprintf stderr "%a: syntax error\n" print_position lexbuf;
+      Out_channel.fprintf stderr "%a: syntax error\n" print_position lexbuf;
       In_channel.close inx;
-      exit (-1)
+      Stdlib.exit 2
 
-let command : Command.t =
-  Command.basic ~summary:"The Language M"
-    ~readme:(fun () -> "Language M is a programming language")
-    (let%map_open.Command filename =
-       anon (maybe_with_default "-" ("filename" %: Filename_unix.arg_type))
-     in
-     fun () ->
-       let prog = get_program filename in
-       Interp.run prog)
+let () =
+  let module Arg = Stdlib.Arg in
+  let module Sys = Stdlib.Sys in
+  let module Filename = Stdlib.Filename in
+  let filename = ref "" in
+  let opt_pp = ref false in
+  
+  let usage_msg =
+    "Usage : " ^ Filename.basename Sys.argv.(0) ^ " [-option] [filename] "
+  in
+  let speclist =
+    [
+      ("-pp", Arg.Unit (fun _ -> opt_pp := true), "Pretty-print program");
+    ]
+  in
+  Arg.parse speclist (fun x -> filename := x) usage_msg;
+  if String.is_empty !filename then Arg.usage speclist usage_msg
+  else (
+    let prog = get_program !filename in
+    Interp.run prog;
 
-let () = Command_unix.run ~version:"0.1.0" ~build_info:"Lang M" command
+    Out_channel.(
+      output_char stdout '\n';
+      flush stdout);
+
+    Stdlib.exit 0)

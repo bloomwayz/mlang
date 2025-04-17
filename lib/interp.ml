@@ -1,4 +1,5 @@
-open! Core
+open! Base
+open Stdio
 open Syntax
 
 exception Run_error of string
@@ -32,9 +33,9 @@ module Dom = struct
     | _ -> raise (Type_error "not a function")
 
   let print_value = function
-    | Int n -> print_endline (Int.to_string n)
-    | Bool b -> print_endline (Bool.to_string b)
-    | String s -> print_endline s
+    | Int n -> Out_channel.print_endline (Int.to_string n)
+    | Bool b -> Out_channel.print_endline (Bool.to_string b)
+    | String s -> Out_channel.print_endline s
     | _ -> raise (Type_error "Write operand is not int/bool/string")
 end
 

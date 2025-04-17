@@ -2,7 +2,7 @@
  (name lang_m)
  (preprocess
   (pps ppx_jane))
- (libraries core ocaml-compiler-libs.common string_dict))
+ (libraries stdio ocaml-compiler-libs.common string_dict))
 
 (ocamllex lexer)
 
