@@ -1,9 +1,7 @@
 (executable
  (public_name lang_m)
  (name main)
- (preprocess
-  (pps ppx_jane))
  (libraries
-lang_m
+  lang_m
   base
   stdio))

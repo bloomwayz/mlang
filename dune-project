@@ -27,16 +27,15 @@
  (description "Language M")
  (depends
   ocaml
-menhir
+  menhir
   dune
-base
+  base
   stdio
   yojson
   ocaml-compiler-libs
   (string_dict
    (>= 0.17.0))
-  (ppx_jane
-   (>= 0.17.0))
+  yojson
   ppx_yojson_conv
   (alcotest :with-test))
  (tags ("Programming Language")))

@@ -1,7 +1,5 @@
 (library
  (name lang_m)
- (preprocess
-  (pps ppx_jane))
  (libraries stdio ocaml-compiler-libs.common string_dict))
 
 (ocamllex lexer)
