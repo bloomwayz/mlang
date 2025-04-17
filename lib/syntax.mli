@@ -1,4 +1,4 @@
-open! Core
+open! Base
 (** Definition of M's syntax, type and interpreter *)
 
 type expr = { desc : desc; loc : Location.t }
