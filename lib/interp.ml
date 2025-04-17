@@ -138,5 +138,5 @@ let rec eval env mem exp =
       (load m' (Dom.to_loc v), m')
 
 let empty_env x = raise (Run_error ("unbound id: " ^ x))
-let empty_mem l = raise (Run_error ("uninitialized loc: " ^ string_of_int l))
+let empty_mem l = raise (Run_error ("uninitialized loc: " ^ Int.to_string l))
 let run exp = ignore (eval empty_env empty_mem exp)
