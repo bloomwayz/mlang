@@ -9,16 +9,14 @@ open Str
 open Range
 open Document
 open Lang_m
-open Lang_m.Syntax
+open Lang_m.Poly_checker
 
-let check_top (exp : Syntax.expr) : Poly_checker.ty =
-  let open Poly_checker in
+let check_top (exp : Syntax.expr) : Ty.t =
   let tyenv = Tyenv.empty in
   let a = new_var () in
   (snd (infer tyenv a exp)) a
 
-let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
-  let open Poly_checker in
+let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Ty.t =
   let tyenv = Tyenv.empty in
   let a = new_var () in
   let tyenv', _ = infer tyenv a top in
@@ -26,9 +24,7 @@ let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Poly_checker.ty =
   let _, subs = infer tyenv' b sub in
   subs b
 
-let check_var (top : Syntax.expr) (sub : Syntax.expr) (id : string) :
-    Poly_checker.ty =
-  let open Poly_checker in
+let check_var (top : Syntax.expr) (sub : Syntax.expr) (id : string) : Ty.t =
   let tyenv = Tyenv.empty in
   let a = new_var () in
   let tyenv', _ = infer tyenv a top in
@@ -37,11 +33,12 @@ let check_var (top : Syntax.expr) (sub : Syntax.expr) (id : string) :
   Tyenv.find id tyenv''
 
 let string_of_cnt n =
+  let sprintf =  Printf.sprintf in
   let base = Char.code 'a' in
-  if n < 26 then Printf.sprintf "'%c" (Char.chr (base + n))
-  else Printf.sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
+  if n < 26 then sprintf "'%c" (Char.chr (base + n))
+  else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
 
-let undisclose s =
+(* let undisclose s =
   let count = ref 0 in
   let r = Str.regexp {|'a[0-9]+|} in
   let rec collect s i =
@@ -54,9 +51,9 @@ let undisclose s =
         collect s (i + 1)
     | exception Not_found -> s
   in
-  collect s 0
+  collect s 0 *)
 
-let rec traverse_ast (exp : expr) (acc : expr list) =
+let rec traverse_ast (exp : Syntax.expr) (acc : Syntax.expr list) =
   match exp.desc with
   | Const _ | Var _ | Read -> exp :: acc
   | Fn (_, e) | Write e | Fst e | Snd e | Malloc e | Deref e ->
@@ -75,11 +72,11 @@ let rec traverse_ast (exp : expr) (acc : expr list) =
       let acc'' = traverse_ast e2 acc' in
       traverse_ast e3 acc''
 
-let in_range (pos : Position.t) (exp : expr) =
+let in_range (pos : Position.t) (exp : Syntax.expr) =
   let exp_range = Range.from_location exp.loc in
   Range.contains_p exp_range pos
 
-let subexp_at_pos (ast : expr) (pos : Position.t) =
+let subexp_at_pos (ast : Syntax.expr) (pos : Position.t) =
   let subexps = traverse_ast ast [] in
   let subexps' = List.filter (in_range pos) subexps in
   List.nth_opt subexps' 0
@@ -125,7 +122,7 @@ let token_with_lexbuf (lexbuf : Lexing.lexbuf) (pos : Position.t) =
   in
   inner ()
 
-let infer_var (id : string) (top : expr) (sub : expr) (range : Range.t) =
+(* let infer_var (id : string) (top : Syntax.expr) (sub : Syntax.expr) (range : Range.t) =
   let open Poly_checker in
   try
     match sub.desc with
@@ -319,3 +316,41 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   | Some (token, range), Some subexp -> (
       match string_of_token token with "" -> None | s -> Some (s, range))
   | None, Some subexp -> infer_space exp subexp
+*)
+
+let rec ty_of_exp (env : Tyenv.t) (exp : Syntax.expr) : Ty.t =
+  match exp.desc with
+  | Const (String _) -> Ty.string
+  | Const (Int _) -> Ty.int
+  | Const (Bool _) -> Ty.bool
+  | Var x -> Tyenv.find x env
+  | Fn (x, e) ->
+    let param = Tyenv.find x env in
+    let body = ty_of_exp env e in
+    Ty.fn (param, body)
+  | App (e1, e2) ->
+    let ty1 = ty_of_exp env e1 in
+    let ty2 = ty_of_exp env e2 in
+    Ty.app (ty1, ty2)
+  | Let (_, e2) -> ty_of_exp env e2
+  | If (e0, e1, e2) -> ty_of_exp env e1
+  | Bop (op, e1, e2) -> (
+    match op with
+    | Add | Sub -> Ty.int
+    | Eq | And | Or -> Ty.bool)
+  | Read -> Ty.int
+  | Write e -> ty_of_exp env e
+  | Malloc e -> Ty.ref (ty_of_exp env e)
+  | Assign (e1, e2) -> ty_of_exp env e2
+  | Deref e -> Ty.deref (ty_of_exp env e)
+  | Seq (e1, e2) -> ty_of_exp env e2
+  | Pair (e1, e2) ->
+    let t1 = ty_of_exp env e1 in
+    let t2 = ty_of_exp env e2 in
+    Ty.pair (t1, t2)
+  | Fst e -> Ty.fst (ty_of_exp env e)
+  | Snd e -> Ty.snd (ty_of_exp env e)
+
+let tystr_of_exp (env : Tyenv.t) (exp : Syntax.expr) : string =
+  Ty.to_string (ty_of_exp env exp)
+  

@@ -25,7 +25,7 @@ end
 let sprint_top ast =
   let open Lang_m.Poly_checker in
   match check_top ast with
-  | ty -> undisclose (string_of_ty ty)
+  | ty -> Ty.to_string ty
   | exception Unimplemented -> "Type checker unimplemented"
   | exception _ -> "Type error"
 

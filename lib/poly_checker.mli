@@ -5,18 +5,35 @@
 
 exception Unimplemented
 
-type ty
-type subs = ty -> ty
+module Ty : sig
+  type t
+
+  val to_string : t -> string
+  val to_typ : t -> Syntax.typ
+
+  val string : t
+  val int : t
+  val bool : t
+
+  val fn : (t * t) -> t
+  val app : (t * t) -> t
+  val ref : t -> t
+  val deref : t -> t
+  val pair : (t * t) -> t
+  val fst : t -> t
+  val snd : t -> t
+end
+
+type subs = Ty.t -> Ty.t
 
 module Tyenv : sig
   type t
 
   val empty : t
-  val find : Syntax.id -> t -> ty
+  val find : Syntax.id -> t -> Ty.t
 end
 
-val new_var : unit -> ty
-val string_of_ty : ty -> string
-val m_ty_of_ty : ty -> Syntax.typ
-val infer : Tyenv.t -> ty -> Syntax.expr -> Tyenv.t * subs
+val new_var : unit -> Ty.t
+val infer : Tyenv.t -> Ty.t -> Syntax.expr -> Tyenv.t * subs
 val check : Syntax.expr -> Syntax.typ
+val string_of_typ : Syntax.typ -> string
