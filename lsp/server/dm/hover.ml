@@ -26,6 +26,22 @@ module HoverResult = struct
     Some { contents; range }
 end
 
+let infer_sub2 (st : States.state) (curr_pos : Position.t) =
+  let subexp_opt =
+    match st.parsedState with
+    | Ast exp -> subexp_at_pos exp curr_pos
+    | Fail _ -> None
+  in
+  (match st.typeState with
+  | Checked env -> (
+    match subexp_opt with
+    | Some subexp ->
+      let value = tystr_of_exp env subexp in
+      let range = Range.from_location subexp.loc in
+      Some (value, range)
+    | None -> None)
+  | _ -> None)
+
 let compute params =
   let uri = get_uri params in
   let curr_pos = params |> member "position" |> Position.t_of_yojson in
@@ -34,9 +50,9 @@ let compute params =
   in
   match st.parsedState with
   | Ast ast -> (
-      match infer_sub st ast curr_pos with
+      match infer_sub2 st curr_pos with
       | Some (value, range) ->
-          let value = undisclose value in
+          (* let value = undisclose value in *)
           HoverResult.create ~value ~range
       | None -> None)
   | Fail _ -> None
