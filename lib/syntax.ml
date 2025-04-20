@@ -37,7 +37,6 @@ type typ =
   | T_string
   | T_pair of typ * typ
   | T_loc of typ
-  | T_arrow of typ * typ
 
 let mk ~loc desc = { desc; loc }
 let mk_ ~loc decl_ = { decl_; loc }

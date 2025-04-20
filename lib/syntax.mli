@@ -37,7 +37,6 @@ type typ =
   | T_string
   | T_pair of typ * typ
   | T_loc of typ
-  | T_arrow of typ * typ
 
 val mk : loc:Location.t -> desc -> expr
 val mk_ : loc:Location.t -> decl_ -> decl
