@@ -128,7 +128,7 @@ module States = struct
       let tyenv = Tyenv.empty in
       let a = new_var () in
       (match infer tyenv a exp with
-      | tyenv', _ -> Tyenv.print tyenv'; Checked tyenv'
+      | tyenv', _ -> Checked tyenv'
       | exception Unimplemented -> Typerr "Type checker unimplemented"
       | exception _ -> Typerr "Type error")
     | Fail (msg, range) -> Otherr (msg, range)

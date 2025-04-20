@@ -67,7 +67,7 @@ let make_prefix = function
   | Resp _ -> "[Response]"
   | Notif _ -> "[Notification]"
 
-let init_log () =
+(* let init_log () =
   let mode = [ Open_creat; Open_trunc ] in
   let oc = open_out_gen mode 0o664 "log.txt" in
   close_out oc
@@ -78,7 +78,7 @@ let output_log pref msg id =
   Printf.fprintf oc "%s\n%s\n\n" pref msg;
   close_out oc;
 
-  match id with Some x -> current_id := x | None -> ()
+  match id with Some x -> current_id := x | None -> () *)
 
 (** Input handler **)
 
