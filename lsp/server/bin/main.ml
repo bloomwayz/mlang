@@ -64,5 +64,5 @@ let rec loop () =
   | _ -> failwith "wtf?"
 
 let () =
-  Protocol.init_log ();
+  (* Protocol.init_log (); *)
   loop ()
