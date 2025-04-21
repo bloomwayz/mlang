@@ -9,7 +9,7 @@ open Yojson.Safe.Util
 open Range
 open Lang_m
 
-module Tyenv = Poly_checker.Tyenv
+module Ty_env = Poly_checker.Ty_env
 
 module Aenv = struct
   type t = Syntax.id -> avar
@@ -43,7 +43,7 @@ module States = struct
   }
   and pstate = Ast of Syntax.expr | Fail of string * Range.t
   and tstate =
-    | Checked of Tyenv.t
+    | Checked of Ty_env.t
     | Typerr of string
     | Otherr of string * Range.t
 
@@ -125,9 +125,9 @@ module States = struct
     let open Poly_checker in
     match pstate with
     | Ast exp ->
-      let tyenv = Tyenv.empty in
-      let a = new_var () in
-      (match infer tyenv a exp with
+      let tyenv = Ty_env.empty in
+      let a = Ty.new_var () in
+      (match infer tyenv exp a with
       | tyenv', _ -> Checked tyenv'
       | exception Unimplemented -> Typerr "Type checker unimplemented"
       | exception _ -> Typerr "Type error")

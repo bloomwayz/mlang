@@ -12,25 +12,9 @@ open Lang_m
 open Lang_m.Poly_checker
 
 let check_top (exp : Syntax.expr) : Ty.t =
-  let tyenv = Tyenv.empty in
-  let a = new_var () in
-  (snd (infer tyenv a exp)) a
-
-let check_sub (top : Syntax.expr) (sub : Syntax.expr) : Ty.t =
-  let tyenv = Tyenv.empty in
-  let a = new_var () in
-  let tyenv', _ = infer tyenv a top in
-  let b = new_var () in
-  let _, subs = infer tyenv' b sub in
-  subs b
-
-let check_var (top : Syntax.expr) (sub : Syntax.expr) (id : string) : Ty.t =
-  let tyenv = Tyenv.empty in
-  let a = new_var () in
-  let tyenv', _ = infer tyenv a top in
-  let b = new_var () in
-  let tyenv'', subs = infer tyenv' b sub in
-  Tyenv.find id tyenv''
+  let tyenv = Ty_env.empty in
+  let a = Ty.new_var () in
+  (snd (infer tyenv exp a)) a
 
 let string_of_cnt n =
   let sprintf =  Printf.sprintf in
@@ -318,14 +302,14 @@ let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
   | None, Some subexp -> infer_space exp subexp
 *)
 
-let rec ty_of_exp (env : Tyenv.t) (exp : Syntax.expr) : Ty.t =
+let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   match exp.desc with
   | Const (String _) -> Ty.string
   | Const (Int _) -> Ty.int
   | Const (Bool _) -> Ty.bool
-  | Var x -> Tyenv.find x env
+  | Var x -> Ty_env.find x env
   | Fn (x, e) ->
-    let param = Tyenv.find x env in
+    let param = Ty_env.find x env in
     let body = ty_of_exp env e in
     Ty.fn (param, body)
   | App (e1, e2) ->
@@ -351,6 +335,6 @@ let rec ty_of_exp (env : Tyenv.t) (exp : Syntax.expr) : Ty.t =
   | Fst e -> Ty.fst (ty_of_exp env e)
   | Snd e -> Ty.snd (ty_of_exp env e)
 
-let tystr_of_exp (env : Tyenv.t) (exp : Syntax.expr) : string =
+let tystr_of_exp (env : Ty_env.t) (exp : Syntax.expr) : string =
   Ty.to_string (ty_of_exp env exp)
   
