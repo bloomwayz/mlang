@@ -78,7 +78,7 @@ module States = struct
       let e2' = convert e2 env' in
       { exp with desc = Let (Rec (s1, s2, e1'), e2') }
     | If (e0, e1, e2) ->
-      let e0' = convert e1 env in
+      let e0' = convert e0 env in
       let e1' = convert e1 env in
       let e2' = convert e2 env in
       { exp with desc = If (e0', e1', e2') }
