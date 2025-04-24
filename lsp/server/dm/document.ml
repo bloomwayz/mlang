@@ -130,7 +130,7 @@ module States = struct
       (match infer tyenv exp a with
       | tyenv', _ -> Checked tyenv'
       | exception Unimplemented -> Typerr "Type checker unimplemented"
-      | exception _ -> Typerr "Type error")
+      | exception (Type_error msg) -> Typerr msg)
     | Fail (msg, range) -> Otherr (msg, range)
 
   (* synchronize functions *)

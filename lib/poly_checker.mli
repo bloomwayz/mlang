@@ -4,6 +4,7 @@
  *)
 
 exception Unimplemented
+exception Type_error of string
 
 module Ty : sig
   type t
