@@ -141,7 +141,7 @@ let compute params =
     match findr uri with Some x -> x | None -> failwith "Lookup failure"
   in
   match findp uri with
-  | Some (Ast ast) -> (
+  | Some (Ast (ast, _)) -> (
       match Lexing.from_string raw with
       | lexbuf -> (
           match lexbuf_to_symbols lexbuf ast with

@@ -11,6 +11,32 @@ open Lang_m
 
 module Ty_env = Poly_checker.Ty_env
 
+module Amem = struct
+  type t = mem ref
+  and mem = ((Syntax.id * Location.t) * avar) list
+  and avar = string
+
+  let init () : t = ref []
+
+  let string_of_loc (loc : Location.t) : string =
+    let range = Range.from_location loc in
+    let start, end_ = range.start, range.end_ in
+    let sln, scl = start.ln, start.col in
+    let eln, ecl = end_.ln, end_.col in
+    Printf.sprintf "%d:%d - %d:%d" sln scl eln ecl
+
+  let print (mem : mem) : unit =
+    (* Printf.eprintf "===== Alpha-memory =====\n"; *)
+    List.iter (fun ((id, loc), avar) -> Printf.eprintf "%s\t%s\t%s\n" id (string_of_loc loc) avar) mem
+    (* Printf.eprintf "========================\n" *)
+
+  let store (id : Syntax.id) (loc : Location.t) (avar : avar) (mem : t) =
+    mem := ((id, loc), avar) :: !mem
+    (* Printf.eprintf "=== Store Completed ===\n"; *)
+    (* print !mem; *)
+    (* Printf.eprintf "=======================\n" *)
+end
+
 module Aenv = struct
   type t = Syntax.id -> avar
   and avar = string
@@ -41,7 +67,9 @@ module States = struct
     parsedState : pstate;
     typeState : tstate;
   }
-  and pstate = Ast of Syntax.expr | Fail of string * Range.t
+  and pstate =
+    | Ast of Syntax.expr * Amem.mem
+    | Fail of string * Range.t
   and tstate =
     | Checked of Ty_env.t
     | Typerr of string
@@ -54,55 +82,67 @@ module States = struct
   let parse_with_error (lexbuf : Lexing.lexbuf) : Syntax.expr =
     Parser.prog Lexer.read lexbuf
 
-  let rec convert (exp : Syntax.expr) (env : Aenv.t) =
-    match exp.desc with
-    | Const _ | Read -> exp
-    | Var id -> { exp with desc = Var (env id) }
-    | Fn (x, e) ->
-      let s, env' = Aenv.bind_new env x in
-      let e' = convert e env' in
-      { exp with desc = Fn (s, e') }
-    | App (e1, e2) ->
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = App (e1', e2') }
-    | Let (Val (x, e1), e2) ->
-      let s, env' = Aenv.bind_new env x in
-      let e1' = convert e1 env' in
-      let e2' = convert e2 env' in
-      { exp with desc = Let (Val (s, e1'), e2') }
-    | Let (Rec (f, x, e1), e2) ->
-      let s1, env' = Aenv.bind_new env f in
-      let s2, env'' = Aenv.bind_new env' x in
-      let e1' = convert e1 env'' in
-      let e2' = convert e2 env' in
-      { exp with desc = Let (Rec (s1, s2, e1'), e2') }
-    | If (e0, e1, e2) ->
-      let e0' = convert e0 env in
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = If (e0', e1', e2') }
-    | Bop (op, e1, e2) ->
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = Bop (op, e1', e2') }
-    | Write e -> { exp with desc = Write (convert e env) }
-    | Malloc e -> { exp with desc = Malloc (convert e env) }
-    | Assign (e1, e2) ->
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = Assign (e1', e2') }
-    | Deref e -> { exp with desc = Deref (convert e env) }
-    | Seq (e1, e2) ->
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = Seq (e1', e2') }
-    | Pair (e1, e2) ->
-      let e1' = convert e1 env in
-      let e2' = convert e2 env in
-      { exp with desc = Pair (e1', e2') }
-    | Fst e -> { exp with desc = Fst (convert e env) }
-    | Snd e -> { exp with desc = Snd (convert e env) }
+  let convert exp env =
+    let mem = Amem.init () in
+    let rec convert (exp : Syntax.expr) (env : Aenv.t) =
+      match exp.desc with
+      | Const _ | Read -> exp
+      | Var id ->
+          let converted = env id in
+          Amem.store id (exp.loc) converted mem;
+          { exp with desc = Var converted }
+      | Fn (x, e) ->
+        let s, env' = Aenv.bind_new env x in
+        let _ = Amem.store x (exp.loc) s mem in
+        let e' = convert e env' in
+        { exp with desc = Fn (s, e') }
+      | App (e1, e2) ->
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = App (e1', e2') }
+      | Let (Val (x, e1), e2) ->
+        let s, env' = Aenv.bind_new env x in
+        let _ = Amem.store x (exp.loc) s mem in
+        let e1' = convert e1 env' in
+        let e2' = convert e2 env' in
+        { exp with desc = Let (Val (s, e1'), e2') }
+      | Let (Rec (f, x, e1), e2) ->
+        let s1, env' = Aenv.bind_new env f in
+        let _ = Amem.store f (exp.loc) s1 mem in
+        let s2, env'' = Aenv.bind_new env' x in
+        let _ = Amem.store x (exp.loc) s2 mem in
+        let e1' = convert e1 env'' in
+        let e2' = convert e2 env' in
+        { exp with desc = Let (Rec (s1, s2, e1'), e2') }
+      | If (e0, e1, e2) ->
+        let e0' = convert e0 env in
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = If (e0', e1', e2') }
+      | Bop (op, e1, e2) ->
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = Bop (op, e1', e2') }
+      | Write e -> { exp with desc = Write (convert e env) }
+      | Malloc e -> { exp with desc = Malloc (convert e env) }
+      | Assign (e1, e2) ->
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = Assign (e1', e2') }
+      | Deref e -> { exp with desc = Deref (convert e env) }
+      | Seq (e1, e2) ->
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = Seq (e1', e2') }
+      | Pair (e1, e2) ->
+        let e1' = convert e1 env in
+        let e2' = convert e2 env in
+        { exp with desc = Pair (e1', e2') }
+      | Fst e -> { exp with desc = Fst (convert e env) }
+      | Snd e -> { exp with desc = Snd (convert e env) }
+    in
+    let aexp = convert exp env in
+    (aexp, !mem)
 
   let get_pstate (filename : string) (rstate : string) : pstate =
     let lexbuf = Lexing.from_string rstate in
@@ -111,7 +151,8 @@ module States = struct
     match parse_with_error lexbuf with
     | ast ->
       let aenv = Aenv.init () in
-      Ast (convert ast aenv)
+      let aast, atbl = convert ast aenv in
+      Ast (aast, atbl)
     | exception Parser.Error ->
         let open Lexing in
         let range = Range.from_lexbuf lexbuf in
@@ -124,7 +165,7 @@ module States = struct
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
     match pstate with
-    | Ast exp ->
+    | Ast (exp, _) ->
       let tyenv = Ty_env.empty in
       let a = Ty.new_var () in
       (match infer tyenv exp a with

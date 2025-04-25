@@ -30,7 +30,7 @@ let sprint_top ast =
   | exception _ -> "Type error"
 
 let get_title : States.pstate -> string = function
-  | Ast ast -> sprint_top ast
+  | Ast (ast, _) -> sprint_top ast
   | Fail _ -> "Syntax error"
 
 let compute params =

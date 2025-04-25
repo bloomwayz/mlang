@@ -27,20 +27,17 @@ module HoverResult = struct
 end
 
 let infer_sub2 (st : States.state) (curr_pos : Position.t) =
-  let subexp_opt =
-    match st.parsedState with
-    | Ast exp -> subexp_at_pos exp curr_pos
-    | Fail _ -> None
-  in
-  (match st.typeState with
-  | Checked env -> (
-    match subexp_opt with
-    | Some subexp ->
-      let value = tystr_of_exp env subexp in
-      let range = Range.from_location subexp.loc in
-      Some (value, range)
-    | None -> None)
-  | _ -> None)
+  let token_opt = token_at_pos st.rawState curr_pos in
+  match st.parsedState with
+  | Ast (exp, tbl) -> (
+    match st.typeState with
+    | Checked env -> (
+      match (subexp_at_pos exp curr_pos) with
+      | Some subexp -> tystr_of_exp env tbl token_opt subexp
+      | None -> None)
+    | _ -> None
+  )
+  | _ -> None
 
 let compute params =
   let uri = get_uri params in
@@ -49,7 +46,7 @@ let compute params =
     match finds uri with Some st -> st | None -> failwith "Lookup failure"
   in
   match st.parsedState with
-  | Ast ast -> (
+  | Ast (ast, _) -> (
       match infer_sub2 st curr_pos with
       | Some (value, range) ->
           (* let value = undisclose value in *)

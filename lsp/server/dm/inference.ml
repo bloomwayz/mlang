@@ -11,6 +11,8 @@ open Document
 open Lang_m
 open Lang_m.Poly_checker
 
+type token_info = (Parser.token * Range.t) option
+
 let check_top (exp : Syntax.expr) : Ty.t =
   let tyenv = Ty_env.empty in
   let a = Ty.new_var () in
@@ -106,201 +108,10 @@ let token_with_lexbuf (lexbuf : Lexing.lexbuf) (pos : Position.t) =
   in
   inner ()
 
-(* let infer_var (id : string) (top : Syntax.expr) (sub : Syntax.expr) (range : Range.t) =
-  let open Poly_checker in
-  try
-    match sub.desc with
-    | Var x ->
-        let ty = string_of_ty (check_sub top sub) in
-        Some (ty, range)
-    | Let (Val (x, e1), _) ->
-        let ty = string_of_ty (check_sub top e1) in
-        Some (ty, range)
-    | Let (Rec (f, x, e1), e2) ->
-        let fexp = { desc = Fn (x, e1); loc = sub.loc } in
-        if id = f then
-          let ty = string_of_ty (check_sub top fexp) in
-          Some (ty, range)
-        else if id = x then
-          let ty = string_of_ty (check_var top fexp id) in
-          Some (ty, range)
-        else None
-    | Fn (x, e) ->
-        let ty = string_of_ty (check_var top sub x) in
-        Some (ty, range)
-    | _ -> None
-  with _ -> None
-
 let token_at_pos (raw : string) (pos : Position.t) =
   match Lexing.from_string raw with
   | lexbuf -> token_with_lexbuf lexbuf pos
   | exception _ -> None
-
-let infer_fn (top : expr) (sub : expr) =
-  let open Poly_checker in
-  let range = Range.from_location sub.loc in
-  match check_sub top sub with
-  | x -> Some (string_of_ty x, range)
-  | exception _ -> None
-
-let infer_bind (top : expr) (sub : expr) =
-  let open Poly_checker in
-  let fexp, e1 =
-    match sub.desc with
-    | Let (Val (x, e1), _) -> (e1, e1)
-    | Let (Rec (f, x, e1), e2) -> ({ desc = Fn (x, e1); loc = sub.loc }, e1)
-    | _ -> failwith "not a let-bind"
-  in
-
-  match check_sub top fexp with
-  | fty ->
-      let fty_str = string_of_ty fty in
-      let r = Range.from_location sub.loc in
-      let sln, scl = (r.start.ln, r.start.col) in
-      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
-      let r' = Range.from_tuples (sln, scl) (eln - 1, ecl) in
-      Some (fty_str, r')
-  | exception _ -> None
-
-let infer_branch (top : expr) (sub : expr)
-    (tko : (Parser.token * Range.t) option) =
-  let open Poly_checker in
-  match sub.desc with
-  | If (e1, e2, e3) -> (
-      match tko with
-      | Some (IF, if_range) ->
-          let e1_range = Range.from_location e1.loc in
-          let start, end_ = (if_range.start, e1_range.end_) in
-          let range = Range.create ~start ~end_ in
-          Some ("bool", range)
-      | Some (THEN, th_range) -> (
-          let e2_range = Range.from_location e2.loc in
-          let start, end_ = (th_range.start, e2_range.end_) in
-          let range = Range.create ~start ~end_ in
-          match check_sub top e2 with
-          | x -> Some (string_of_ty x, range)
-          | exception _ -> None)
-      | Some (ELSE, el_range) -> (
-          let e3_range = Range.from_location e3.loc in
-          let start, end_ = (el_range.start, e3_range.end_) in
-          let range = Range.create ~start ~end_ in
-          match check_sub top e3 with
-          | x -> Some (string_of_ty x, range)
-          | exception _ -> None)
-      | _ -> None)
-  | _ -> None
-
-let infer_others (top : expr) (sub : expr) =
-  let open Poly_checker in
-  let range = Range.from_location sub.loc in
-  match check_sub top sub with
-  | x -> Some (string_of_ty x, range)
-  | exception _ -> None
-
-let infer_par (top : expr) (sub : expr) =
-  let glb =
-    match sub.desc with
-    | Pair _ -> sub
-    | _ ->
-        let subexps = traverse_ast sub [] in
-        List.nth (List.rev subexps) 1
-  in
-  infer_others top glb
-
-let infer_space (top : expr) (sub : expr) =
-  let open Poly_checker in
-  match sub.desc with
-  | Let (Val (x, e1), _) | Let (Rec (_, x, e1), _) ->
-      let r = Range.from_location sub.loc in
-      let sln, scl = r.start.ln, r.start.col in
-      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
-      let range = Range.from_tuples (sln, scl) (eln - 1, ecl) in
-      (match check_sub top e1 with
-      | x -> Some (string_of_ty x, range)
-      | exception _ -> None)
-  | _ -> infer_others top sub
-
-let print_token : (Parser.token * Range.t) option -> string = function
-  | Some (ID x, _) -> "ID: " ^ x
-  | Some (VAL, _) -> "VAL"
-  | Some (REC, _) -> "REC"
-  | Some (FN, _) -> "FN"
-  | Some (RARROW, _) -> "RARR"
-  | Some (EQ, _) -> "EQ"
-  | Some (INT n, _) -> "INT: " ^ string_of_int n
-  | Some (LPAREN, _) -> "LPAR"
-  | Some (RPAREN, _) -> "RPAR"
-  | Some (IF, _) -> "IF"
-  | Some (THEN, _) -> "THEN"
-  | Some (ELSE, _) -> "ELSE"
-  | Some (LET, _) -> "LET"
-  | Some (IN, _) -> "IN"
-  | Some (END, _) -> "END"
-  | Some (DOT, _) -> "DOT"
-  | Some (COMMA, _) -> "COMMA"
-  | Some (SEMI, _) -> "SEMI"
-  | Some (token, _) -> "ETC"
-  | None -> "NULL"
-
-let print_expr : expr option -> string = function
-  | Some { desc; _ } -> (
-      match desc with
-      | Const _ -> "Const"
-      | Var _ -> "Var"
-      | Fn _ -> "Fn"
-      | App _ -> "App"
-      | Let _ -> "Let"
-      | If _ -> "If"
-      | Bop _ -> "Bop"
-      | Read -> "Read"
-      | Write _ -> "Write"
-      | Malloc _ -> "Ref"
-      | Assign _ -> "Asn"
-      | Deref _ -> "Drf"
-      | Seq _ -> "Seq"
-      | Pair _ -> "Pair"
-      | Fst _ -> "Fst"
-      | Snd _ -> "Snd")
-  | None -> "Null"
-
-let infer_sub (st : States.state) (exp : expr) (curr_pos : Position.t) :
-    (string * Range.t) option =
-  let pgmtxt = st.rawState in
-  let token_opt = token_at_pos pgmtxt curr_pos in
-  let subexp_opt = subexp_at_pos exp curr_pos in
-  (* let _ =
-    Printf.eprintf "%s\t%s\n" (print_token token_opt) (print_expr subexp_opt)
-  in *)
-
-  match (token_opt, subexp_opt) with
-  | _, None -> None
-  | Some (ID x, range), Some subexp -> infer_var x exp subexp range
-  | Some ((VAL | REC), range), Some subexp -> infer_bind exp subexp
-  | Some ((FN | RARROW), range), Some subexp -> infer_fn exp subexp
-  | Some (EQ, range), Some subexp -> (
-      match subexp.desc with
-      | Let _ -> infer_bind exp subexp
-      | Bop (Eq, _, _) -> Some ("'a -> 'a -> 'a", range)
-      | _ -> failwith "Unreachable")
-  | Some (INT 1, range), Some subexp -> (
-      match subexp.desc with
-      | Fst _ -> infer_others exp subexp
-      | Const (Int 1) -> Some ("int", range)
-      | _ -> failwith "Unreachable")
-  | Some (INT 2, range), Some subexp -> (
-      match subexp.desc with
-      | Snd _ -> infer_others exp subexp
-      | Const (Int 2) -> Some ("int", range)
-      | _ -> failwith "Unreachable")
-  | Some ((LPAREN | RPAREN), _), Some subexp -> infer_par exp subexp
-  | Some ((IF | THEN | ELSE), _), Some subexp ->
-      infer_branch exp subexp token_opt
-  | Some ((LET | IN | END | DOT | COMMA | SEMI), _), Some subexp ->
-      infer_others exp subexp
-  | Some (token, range), Some subexp -> (
-      match string_of_token token with "" -> None | s -> Some (s, range))
-  | None, Some subexp -> infer_space exp subexp
-*)
 
 let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   match exp.desc with
@@ -335,6 +146,184 @@ let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   | Fst e -> Ty.fst (ty_of_exp env e)
   | Snd e -> Ty.snd (ty_of_exp env e)
 
-let tystr_of_exp (env : Ty_env.t) (exp : Syntax.expr) : string =
-  Ty.to_string (ty_of_exp env exp)
+(* let infer_var (id : string) (exp : Syntax.expr) (range : Range.t) =
+  let open Poly_checker in
+  try
+    match exp.desc with
+    | Var x ->
+        let ty = string_of_ty (Ty.) in
+        Some (ty, range)
+    | Let (Val (x, e1), _) ->
+        let ty = string_of_ty (check_sub top e1) in
+        Some (ty, range)
+    | Let (Rec (f, x, e1), e2) ->
+        let fexp = { desc = Fn (x, e1); loc = sub.loc } in
+        if id = f then
+          let ty = string_of_ty (check_sub top fexp) in
+          Some (ty, range)
+        else if id = x then
+          let ty = string_of_ty (check_var top fexp id) in
+          Some (ty, range)
+        else None
+    | Fn (x, e) ->
+        let ty = string_of_ty (check_var top sub x) in
+        Some (ty, range)
+    | _ -> None
+  with _ -> None *)
+
+(* let infer_fn (top : expr) (sub : expr) =
+  let open Poly_checker in
+  let range = Range.from_location sub.loc in
+  match check_sub top sub with
+  | x -> Some (string_of_ty x, range)
+  | exception _ -> None *)
+
+let infer_bind (env : Ty_env.t) (exp : Syntax.expr) =
+  let open Poly_checker in
+  let fexp, e1 =
+    match exp.desc with
+    | Let (Val (x, e1), _) -> (e1, e1)
+    | Let (Rec (f, x, e1), e2) -> ({ desc = Fn (x, e1); loc = exp.loc }, e1)
+    | _ -> failwith "not a let-bind"
+  in
+
+  match ty_of_exp env fexp with
+  | fty ->
+      let fty_str = Ty.to_string fty in
+      let r = Range.from_location exp.loc in
+      let sln, scl = (r.start.ln, r.start.col) in
+      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
+      let r' = Range.from_tuples (sln, scl) (eln - 1, ecl) in
+      Some (fty_str, r')
+  | exception _ -> None
+
+let infer_branch (env : Ty_env.t) (exp : Syntax.expr) (tko : token_info) =
+  let open Poly_checker in
+  match exp.desc with
+  | If (e1, e2, e3) -> (
+      match tko with
+      | Some (IF, if_range) ->
+          let ty = Ty.bool in
+          let e1_range = Range.from_location e1.loc in
+          let start, end_ = (if_range.start, e1_range.end_) in
+          let range = Range.create ~start ~end_ in
+          Some (Ty.to_string ty, range)
+      | Some (THEN, th_range) ->
+          let ty = ty_of_exp env e2 in
+          let e2_range = Range.from_location e2.loc in
+          let start, end_ = (th_range.start, e2_range.end_) in
+          let range = Range.create ~start ~end_ in
+          Some (Ty.to_string ty, range)
+      | Some (ELSE, el_range) ->
+          let ty = ty_of_exp env e3 in
+          let e3_range = Range.from_location e3.loc in
+          let start, end_ = (el_range.start, e3_range.end_) in
+          let range = Range.create ~start ~end_ in
+          Some (Ty.to_string ty, range)
+      | _ -> None)
+  | _ -> None
+
+let pipeline (env : Ty_env.t) (exp : Syntax.expr) =
+  let open Poly_checker in
+  let range = Range.from_location exp.loc in
+  match ty_of_exp env exp with
+  | x -> Some (Ty.to_string x, range)
+  | exception _ -> None
+
+let infer_par (env : Ty_env.t) (exp : Syntax.expr) =
+  let glb =
+    match exp.desc with
+    | Pair _ -> exp
+    | _ ->
+        let subexps = traverse_ast exp [] in
+        List.nth (List.rev subexps) 1
+  in
+  pipeline env glb
+
+let infer_space (env : Ty_env.t) (exp : Syntax.expr) =
+  let open Poly_checker in
+  match exp.desc with
+  | Let (Val (x, e1), _) | Let (Rec (_, x, e1), _) ->
+      let ty = ty_of_exp env e1 in
+      let r = Range.from_location exp.loc in
+      let sln, scl = r.start.ln, r.start.col in
+      let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
+      let range = Range.from_tuples (sln, scl) (eln - 1, ecl) in
+      Some (Ty.to_string ty, range)
+  | _ -> pipeline env exp
+
+let print_token : (Parser.token * Range.t) option -> string = function
+  | Some (ID x, _) -> "ID: " ^ x
+  | Some (VAL, _) -> "VAL"
+  | Some (REC, _) -> "REC"
+  | Some (FN, _) -> "FN"
+  | Some (RARROW, _) -> "RARR"
+  | Some (EQ, _) -> "EQ"
+  | Some (INT n, _) -> "INT: " ^ string_of_int n
+  | Some (LPAREN, _) -> "LPAR"
+  | Some (RPAREN, _) -> "RPAR"
+  | Some (IF, _) -> "IF"
+  | Some (THEN, _) -> "THEN"
+  | Some (ELSE, _) -> "ELSE"
+  | Some (LET, _) -> "LET"
+  | Some (IN, _) -> "IN"
+  | Some (END, _) -> "END"
+  | Some (DOT, _) -> "DOT"
+  | Some (COMMA, _) -> "COMMA"
+  | Some (SEMI, _) -> "SEMI"
+  | Some (token, _) -> "ETC"
+  | None -> "NULL"
+
+(* let print_expr : expr option -> string = function
+  | Some { desc; _ } -> (
+      match desc with
+      | Const _ -> "Const"
+      | Var _ -> "Var"
+      | Fn _ -> "Fn"
+      | App _ -> "App"
+      | Let _ -> "Let"
+      | If _ -> "If"
+      | Bop _ -> "Bop"
+      | Read -> "Read"
+      | Write _ -> "Write"
+      | Malloc _ -> "Ref"
+      | Assign _ -> "Asn"
+      | Deref _ -> "Drf"
+      | Seq _ -> "Seq"
+      | Pair _ -> "Pair"
+      | Fst _ -> "Fst"
+      | Snd _ -> "Snd")
+  | None -> "Null" *)
+
+let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info) (exp : Syntax.expr) =
+  match tko with
+  | Some (ID x, range) ->
+      let x' = List.assoc (x, exp.loc) atbl in
+      let _ = Printf.eprintf "Var %s\n" x' in
+      let ty = Ty_env.find x' env in
+      Some (Ty.to_string ty, range)
+  | Some ((VAL | REC), range) -> infer_bind env exp
+  | Some (EQ, range) -> (
+      match exp.desc with
+      | Let _ -> infer_bind env exp
+      | Bop (Eq, _, _) -> Some ("'a -> 'a -> 'a", range)
+      | _ -> failwith "Not an equality")
+  | Some (INT 1, range) -> (
+      match exp.desc with
+      | Fst _ -> pipeline env exp
+      | Const (Int 1) -> Some ("int", range)
+      | _ -> failwith "Not 1")
+  | Some (INT 2, range) -> (
+      match exp.desc with
+      | Snd _ -> pipeline env exp
+      | Const (Int 2) -> Some ("int", range)
+      | _ -> failwith "Not 2")
+  | Some ((LPAREN | RPAREN), _) -> infer_par env exp
+  | Some ((IF | THEN | ELSE), _) ->
+      infer_branch env exp tko
+  | Some ((FN | RARROW | LET | IN | END | DOT | COMMA | SEMI), _) ->
+      pipeline env exp
+  | Some (token, range) -> (
+      match string_of_token token with "" -> None | s -> Some (s, range))
+  | None -> infer_space env exp
   
