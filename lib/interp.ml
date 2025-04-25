@@ -56,7 +56,7 @@ let load m l = m l
 let bind env (x, v) = env @+ (x, v)
 
 let malloc m =
-  incr loc_count;
+  Int.incr loc_count;
   (!loc_count, m)
 
 (* auxiliary functions *)
