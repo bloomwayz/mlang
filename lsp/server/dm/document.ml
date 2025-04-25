@@ -152,14 +152,14 @@ module States = struct
         let aenv = Aenv.init () in
         let aast, atbl = convert ast aenv in
         Ast (aast, atbl)
-    | exception Parser.Error ->
-        let open Lexing in
-        let range = Range.from_lexbuf lexbuf in
-        Fail ("Parsing Error", range)
     | exception Lexer.SyntaxError msg ->
         let open Lexing in
         let range = Range.from_lexbuf lexbuf in
         Fail (msg, range)
+    | exception _ -> 
+        let open Lexing in
+        let range = Range.from_lexbuf lexbuf in
+        Fail ("Syntax Error", range)
 
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
