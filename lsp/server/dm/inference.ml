@@ -66,22 +66,10 @@ let slice txt lnum cnum =
 let ty_of_token (token : Parser.token) =
   let open Ty in
   match token with
-  | WRITE ->
-      let a = new_var ()
-      in fn (a, a)
   | TRUE | FALSE -> bool
   | READ -> fn (int, int)
   | PLUS | MINUS -> fn (int, fn (int, int))
   | OR | AND -> fn (bool, fn (bool, bool))
-  | MALLOC ->
-      let a = new_var () in
-      fn (a, ref a)
-  | COLEQ ->
-      let a = new_var () in
-      fn (ref a, fn (a, a))
-  | BANG ->
-      let a = new_var () in
-      fn (ref a, a)
   | STRING _ -> string
   | INT _ -> int
   | _ -> failwith "not a type constant"
@@ -235,6 +223,34 @@ let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info)
       | _ -> failwith "Not 2")
   | Some ((LPAREN | RPAREN), _) -> infer_par env exp
   | Some ((IF | THEN | ELSE), _) -> infer_branch env exp tko
+  | Some (WRITE, range) -> (
+      match exp.desc with
+      | Write e ->
+          let ty = ty_of_exp env e in
+          let ty' = Ty.fn (ty, ty) in
+          Some (Ty.to_string ty', range)
+      | _ -> failwith "Not a write")
+  | Some (MALLOC, range) -> (
+      match exp.desc with
+      | Malloc e ->
+          let ty = ty_of_exp env e in
+          let ty' = Ty.fn (ty, Ty.ref ty) in
+          Some (Ty.to_string ty', range)
+      | _ -> failwith "Not a malloc")
+  | Some (COLEQ, range) -> (
+      match exp.desc with
+      | Assign (e1, e2) ->
+          let ty = ty_of_exp env e2 in
+          let ty' = Ty.fn (Ty.ref ty, Ty.fn (ty, ty)) in
+          Some (Ty.to_string ty', range)
+      | _ -> failwith "Not a assign")
+  | Some (BANG, range) -> (
+      match exp.desc with
+      | Deref e ->
+          let ty = ty_of_exp env e in
+          let ty' = Ty.fn (ty, Ty.deref ty) in
+          Some (Ty.to_string ty', range)
+      | _ -> failwith "Not a assign")
   | Some ((FN | RARROW | LET | IN | END | DOT | COMMA | SEMI), _) ->
       pipeline env exp
   | Some ((EOF | COMMENT _), _) -> None
