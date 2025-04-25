@@ -15,12 +15,6 @@ let check_top (exp : Syntax.expr) : Ty.t =
   let a = Ty.new_var () in
   (snd (infer tyenv exp a)) a
 
-let string_of_cnt n =
-  let sprintf = Printf.sprintf in
-  let base = Char.code 'a' in
-  if n < 26 then sprintf "'%c" (Char.chr (base + n))
-  else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
-
 let rec traverse_ast (exp : Syntax.expr) (acc : Syntax.expr list) =
   match exp.desc with
   | Const _ | Var _ | Read -> exp :: acc

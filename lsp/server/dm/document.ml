@@ -158,6 +158,12 @@ module States = struct
         let open Lexing in
         let range = Range.from_lexbuf lexbuf in
         Fail ("Syntax Error", range)
+  
+  let string_of_cnt n =
+    let sprintf = Printf.sprintf in
+    let base = Char.code 'a' in
+    if n < 26 then sprintf "'%c" (Char.chr (base + n))
+    else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
 
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
