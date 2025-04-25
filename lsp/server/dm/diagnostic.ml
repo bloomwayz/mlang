@@ -32,8 +32,8 @@ let compute params =
   match findt uri with
   | Checked _ -> None
   | Typerr message ->
-    let range = Range.from_tuples (0, 0) (0, 0) in
-    DiagnosticReport.create ~range ~message
+      let range = Range.from_tuples (0, 0) (0, 0) in
+      DiagnosticReport.create ~range ~message
   | Otherr (message, range) -> DiagnosticReport.create ~range ~message
 
 let push id params =

@@ -30,13 +30,12 @@ let infer_sub2 (st : States.state) (curr_pos : Position.t) =
   let token_opt = token_at_pos st.rawState curr_pos in
   match st.parsedState with
   | Ast (exp, tbl) -> (
-    match st.typeState with
-    | Checked env -> (
-      match (subexp_at_pos exp curr_pos) with
-      | Some subexp -> tystr_of_exp env tbl token_opt subexp
-      | None -> None)
-    | _ -> None
-  )
+      match st.typeState with
+      | Checked env -> (
+          match subexp_at_pos exp curr_pos with
+          | Some subexp -> tystr_of_exp env tbl token_opt subexp
+          | None -> None)
+      | _ -> None)
   | _ -> None
 
 let compute params =

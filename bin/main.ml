@@ -34,18 +34,16 @@ let () =
   let module Filename = Stdlib.Filename in
   let filename = ref "" in
   let opt_pp = ref false in
-  
+
   let usage_msg =
     "Usage : " ^ Filename.basename Sys.argv.(0) ^ " [-option] [filename] "
   in
   let speclist =
-    [
-      ("-pp", Arg.Unit (fun _ -> opt_pp := true), "Pretty-print program");
-    ]
+    [ ("-pp", Arg.Unit (fun _ -> opt_pp := true), "Pretty-print program") ]
   in
   Arg.parse speclist (fun x -> filename := x) usage_msg;
   if String.is_empty !filename then Arg.usage speclist usage_msg
-  else (
+  else
     let prog = get_program !filename in
     Interp.run prog;
 
@@ -53,4 +51,4 @@ let () =
       output_char stdout '\n';
       flush stdout);
 
-    Stdlib.exit 0)
+    Stdlib.exit 0

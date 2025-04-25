@@ -31,12 +31,7 @@ and decl_ =
 
 and bop = Add | Sub | Eq | And | Or
 
-type typ =
-  | T_int
-  | T_bool
-  | T_string
-  | T_pair of typ * typ
-  | T_loc of typ
+type typ = T_int | T_bool | T_string | T_pair of typ * typ | T_loc of typ
 
 val mk : loc:Location.t -> desc -> expr
 val mk_ : loc:Location.t -> decl_ -> decl

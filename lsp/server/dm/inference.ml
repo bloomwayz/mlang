@@ -19,25 +19,16 @@ let check_top (exp : Syntax.expr) : Ty.t =
   (snd (infer tyenv exp a)) a
 
 let string_of_cnt n =
-  let sprintf =  Printf.sprintf in
+  let sprintf = Printf.sprintf in
   let base = Char.code 'a' in
   if n < 26 then sprintf "'%c" (Char.chr (base + n))
   else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
 
-(* let undisclose s =
-  let count = ref 0 in
-  let r = Str.regexp {|'a[0-9]+|} in
-  let rec collect s i =
-    match Str.search_forward r s i with
-    | i ->
-        let sub = Str.matched_string s in
-        let subr = Str.regexp sub in
-        let s = Str.global_replace subr (string_of_cnt !count) s in
-        incr count;
-        collect s (i + 1)
-    | exception Not_found -> s
-  in
-  collect s 0 *)
+(* let undisclose s = let count = ref 0 in let r = Str.regexp {|'a[0-9]+|} in
+   let rec collect s i = match Str.search_forward r s i with | i -> let sub =
+   Str.matched_string s in let subr = Str.regexp sub in let s =
+   Str.global_replace subr (string_of_cnt !count) s in incr count; collect s (i
+   + 1) | exception Not_found -> s in collect s 0 *)
 
 let rec traverse_ast (exp : Syntax.expr) (acc : Syntax.expr list) =
   match exp.desc with
@@ -120,19 +111,17 @@ let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   | Const (Bool _) -> Ty.bool
   | Var x -> Ty_env.find x env
   | Fn (x, e) ->
-    let param = Ty_env.find x env in
-    let body = ty_of_exp env e in
-    Ty.fn (param, body)
+      let param = Ty_env.find x env in
+      let body = ty_of_exp env e in
+      Ty.fn (param, body)
   | App (e1, e2) ->
-    let ty1 = ty_of_exp env e1 in
-    let ty2 = ty_of_exp env e2 in
-    Ty.app (ty1, ty2)
+      let ty1 = ty_of_exp env e1 in
+      let ty2 = ty_of_exp env e2 in
+      Ty.app (ty1, ty2)
   | Let (_, e2) -> ty_of_exp env e2
   | If (e0, e1, e2) -> ty_of_exp env e1
   | Bop (op, e1, e2) -> (
-    match op with
-    | Add | Sub -> Ty.int
-    | Eq | And | Or -> Ty.bool)
+      match op with Add | Sub -> Ty.int | Eq | And | Or -> Ty.bool)
   | Read -> Ty.int
   | Write e -> ty_of_exp env e
   | Malloc e -> Ty.ref (ty_of_exp env e)
@@ -140,43 +129,25 @@ let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   | Deref e -> Ty.deref (ty_of_exp env e)
   | Seq (e1, e2) -> ty_of_exp env e2
   | Pair (e1, e2) ->
-    let t1 = ty_of_exp env e1 in
-    let t2 = ty_of_exp env e2 in
-    Ty.pair (t1, t2)
+      let t1 = ty_of_exp env e1 in
+      let t2 = ty_of_exp env e2 in
+      Ty.pair (t1, t2)
   | Fst e -> Ty.fst (ty_of_exp env e)
   | Snd e -> Ty.snd (ty_of_exp env e)
 
-(* let infer_var (id : string) (exp : Syntax.expr) (range : Range.t) =
-  let open Poly_checker in
-  try
-    match exp.desc with
-    | Var x ->
-        let ty = string_of_ty (Ty.) in
-        Some (ty, range)
-    | Let (Val (x, e1), _) ->
-        let ty = string_of_ty (check_sub top e1) in
-        Some (ty, range)
-    | Let (Rec (f, x, e1), e2) ->
-        let fexp = { desc = Fn (x, e1); loc = sub.loc } in
-        if id = f then
-          let ty = string_of_ty (check_sub top fexp) in
-          Some (ty, range)
-        else if id = x then
-          let ty = string_of_ty (check_var top fexp id) in
-          Some (ty, range)
-        else None
-    | Fn (x, e) ->
-        let ty = string_of_ty (check_var top sub x) in
-        Some (ty, range)
-    | _ -> None
-  with _ -> None *)
+(* let infer_var (id : string) (exp : Syntax.expr) (range : Range.t) = let open
+   Poly_checker in try match exp.desc with | Var x -> let ty = string_of_ty
+   (Ty.) in Some (ty, range) | Let (Val (x, e1), _) -> let ty = string_of_ty
+   (check_sub top e1) in Some (ty, range) | Let (Rec (f, x, e1), e2) -> let fexp
+   = { desc = Fn (x, e1); loc = sub.loc } in if id = f then let ty =
+   string_of_ty (check_sub top fexp) in Some (ty, range) else if id = x then let
+   ty = string_of_ty (check_var top fexp id) in Some (ty, range) else None | Fn
+   (x, e) -> let ty = string_of_ty (check_var top sub x) in Some (ty, range) | _
+   -> None with _ -> None *)
 
-(* let infer_fn (top : expr) (sub : expr) =
-  let open Poly_checker in
-  let range = Range.from_location sub.loc in
-  match check_sub top sub with
-  | x -> Some (string_of_ty x, range)
-  | exception _ -> None *)
+(* let infer_fn (top : expr) (sub : expr) = let open Poly_checker in let range =
+   Range.from_location sub.loc in match check_sub top sub with | x -> Some
+   (string_of_ty x, range) | exception _ -> None *)
 
 let infer_bind (env : Ty_env.t) (exp : Syntax.expr) =
   let open Poly_checker in
@@ -246,7 +217,7 @@ let infer_space (env : Ty_env.t) (exp : Syntax.expr) =
   | Let (Val (x, e1), _) | Let (Rec (_, x, e1), _) ->
       let ty = ty_of_exp env e1 in
       let r = Range.from_location exp.loc in
-      let sln, scl = r.start.ln, r.start.col in
+      let sln, scl = (r.start.ln, r.start.col) in
       let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
       let range = Range.from_tuples (sln, scl) (eln - 1, ecl) in
       Some (Ty.to_string ty, range)
@@ -274,28 +245,15 @@ let print_token : (Parser.token * Range.t) option -> string = function
   | Some (token, _) -> "ETC"
   | None -> "NULL"
 
-(* let print_expr : expr option -> string = function
-  | Some { desc; _ } -> (
-      match desc with
-      | Const _ -> "Const"
-      | Var _ -> "Var"
-      | Fn _ -> "Fn"
-      | App _ -> "App"
-      | Let _ -> "Let"
-      | If _ -> "If"
-      | Bop _ -> "Bop"
-      | Read -> "Read"
-      | Write _ -> "Write"
-      | Malloc _ -> "Ref"
-      | Assign _ -> "Asn"
-      | Deref _ -> "Drf"
-      | Seq _ -> "Seq"
-      | Pair _ -> "Pair"
-      | Fst _ -> "Fst"
-      | Snd _ -> "Snd")
-  | None -> "Null" *)
+(* let print_expr : expr option -> string = function | Some { desc; _ } -> (
+   match desc with | Const _ -> "Const" | Var _ -> "Var" | Fn _ -> "Fn" | App _
+   -> "App" | Let _ -> "Let" | If _ -> "If" | Bop _ -> "Bop" | Read -> "Read" |
+   Write _ -> "Write" | Malloc _ -> "Ref" | Assign _ -> "Asn" | Deref _ -> "Drf"
+   | Seq _ -> "Seq" | Pair _ -> "Pair" | Fst _ -> "Fst" | Snd _ -> "Snd") | None
+   -> "Null" *)
 
-let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info) (exp : Syntax.expr) =
+let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info)
+    (exp : Syntax.expr) =
   match tko with
   | Some (ID x, range) ->
       let x' = List.assoc (x, exp.loc) atbl in
@@ -319,11 +277,9 @@ let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info) (exp : Sy
       | Const (Int 2) -> Some ("int", range)
       | _ -> failwith "Not 2")
   | Some ((LPAREN | RPAREN), _) -> infer_par env exp
-  | Some ((IF | THEN | ELSE), _) ->
-      infer_branch env exp tko
+  | Some ((IF | THEN | ELSE), _) -> infer_branch env exp tko
   | Some ((FN | RARROW | LET | IN | END | DOT | COMMA | SEMI), _) ->
       pipeline env exp
   | Some (token, range) -> (
       match string_of_token token with "" -> None | s -> Some (s, range))
   | None -> infer_space env exp
-  

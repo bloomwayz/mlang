@@ -1,7 +1,4 @@
 (executable
  (public_name lang_m)
  (name main)
- (libraries
-  lang_m
-  base
-  stdio))
+ (libraries lang_m base stdio))
