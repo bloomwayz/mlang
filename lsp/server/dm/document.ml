@@ -8,8 +8,8 @@
 open Yojson.Safe.Util
 open Range
 open Lang_m
-
-module Ty_env = Poly_checker.Ty_env
+open Lang_m.Syntax
+open Lang_m.Poly_checker
 
 module Amem = struct
   type t = mem ref
@@ -30,7 +30,7 @@ module Amem = struct
     List.iter (fun ((id, loc), avar) -> Printf.eprintf "%s\t%s\t%s\n" id (string_of_loc loc) avar) mem
     (* Printf.eprintf "========================\n" *)
 
-  let store (id : Syntax.id) (loc : Location.t) (avar : avar) (mem : t) =
+  let store (id : id) (loc : Location.t) (avar : avar) (mem : t) =
     mem := ((id, loc), avar) :: !mem
     (* Printf.eprintf "=== Store Completed ===\n"; *)
     (* print !mem; *)
@@ -38,7 +38,7 @@ module Amem = struct
 end
 
 module Aenv = struct
-  type t = Syntax.id -> avar
+  type t = id -> avar
   and avar = string
 
   let count = ref 0
@@ -52,10 +52,10 @@ module Aenv = struct
   let init () : t =
     count := 0; empty
 
-  let bind (env : t) (id, avar : Syntax.id * avar) =
+  let bind (env : t) (id, avar : id * avar) =
     fun x -> if x = id then avar else (env x)
 
-  let bind_new (env : t) (id : Syntax.id) : (avar * t) =
+  let bind_new (env : t) (id : id) : (avar * t) =
     let s = new_avar () in
     s, bind env (id, s)
 end
@@ -68,7 +68,7 @@ module States = struct
     typeState : tstate;
   }
   and pstate =
-    | Ast of Syntax.expr * Amem.mem
+    | Ast of expr * Amem.mem
     | Fail of string * Range.t
   and tstate =
     | Checked of Ty_env.t
@@ -79,12 +79,12 @@ module States = struct
 
   let init () : t = Hashtbl.create 39
 
-  let parse_with_error (lexbuf : Lexing.lexbuf) : Syntax.expr =
+  let parse_with_error (lexbuf : Lexing.lexbuf) : expr =
     Parser.prog Lexer.read lexbuf
 
   let convert exp env =
     let mem = Amem.init () in
-    let rec convert (exp : Syntax.expr) (env : Aenv.t) =
+    let rec convert (exp : expr) (env : Aenv.t) =
       match exp.desc with
       | Const _ | Read -> exp
       | Var id ->
