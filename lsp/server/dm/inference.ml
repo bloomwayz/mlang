@@ -3,7 +3,6 @@
  * M Language Server
  *)
 
-open Str
 open Range
 open Document
 open Lang_m
