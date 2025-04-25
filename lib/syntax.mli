@@ -1,3 +1,8 @@
+(*
+ * SNU 4190.310 Programming Languages 2025 Spring
+ * M Language Definition Interface File
+ *)
+
 open! Base
 (** Definition of M's syntax, type and interpreter *)
 

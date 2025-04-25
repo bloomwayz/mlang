@@ -1,7 +1,6 @@
 (*
- * SNU 4190.310 Programming Languages
- *
- * M pretty printer
+ * SNU 4190.310 Programming Languages 2025 Spring
+ * M Pretty Printer
  *)
 
 open Syntax

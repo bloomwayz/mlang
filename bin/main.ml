@@ -1,3 +1,8 @@
+(*
+ * SNU 4190.310 Programming Languages 2025 Spring
+ * Main interface for M
+ *)
+
 open! Base
 open Stdio
 open Lang_m
