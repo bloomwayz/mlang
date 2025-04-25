@@ -6,8 +6,6 @@ maintainer: ["Jay Lee" "Junyoung Park"]
 authors: ["Jay Lee" "Junyoung Park"]
 license: "LICENSE"
 tags: ["Programming Language"]
-homepage: "https://github.com/bloomwayz/mlang"
-bug-reports: "https://github.com/bloomwayz/mlang/issues"
 depends: [
   "ocaml"
   "menhir"
@@ -36,4 +34,3 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/bloomwayz/mlang.git"

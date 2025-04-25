@@ -6,9 +6,6 @@
 
 (generate_opam_files true)
 
-(source
- (github bloomwayz/mlang))
-
 (authors
   "Jay Lee"
   "Junyoung Park")
