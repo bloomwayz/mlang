@@ -86,14 +86,14 @@ let token_at_pos (raw : string) (pos : Position.t) =
   | lexbuf -> token_with_lexbuf lexbuf pos
   | exception _ -> None
 
-let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
+let rec ty_of_exp (env : States.tytbl) (exp : Syntax.expr) : Ty.t =
   match exp.desc with
   | Const (String _) -> Ty.string
   | Const (Int _) -> Ty.int
   | Const (Bool _) -> Ty.bool
-  | Var x -> Ty_env.find x env
+  | Var x -> List.assoc x env
   | Fn (x, e) ->
-      let param = Ty_env.find x env in
+      let param = List.assoc x env in
       let body = ty_of_exp env e in
       Ty.fn (param, body)
   | App (e1, e2) ->
@@ -117,7 +117,7 @@ let rec ty_of_exp (env : Ty_env.t) (exp : Syntax.expr) : Ty.t =
   | Fst e -> Ty.fst (ty_of_exp env e)
   | Snd e -> Ty.snd (ty_of_exp env e)
 
-let infer_bind (env : Ty_env.t) (exp : Syntax.expr) =
+let infer_bind (env : States.tytbl) (exp : Syntax.expr) =
   let open Poly_checker in
   let fexp, e1 =
     match exp.desc with
@@ -136,7 +136,7 @@ let infer_bind (env : Ty_env.t) (exp : Syntax.expr) =
       Some (fty_str, r')
   | exception _ -> None
 
-let infer_branch (env : Ty_env.t) (exp : Syntax.expr) (tko : token_info) =
+let infer_branch (env : States.tytbl) (exp : Syntax.expr) (tko : token_info) =
   let open Poly_checker in
   match exp.desc with
   | If (e1, e2, e3) -> (
@@ -162,14 +162,14 @@ let infer_branch (env : Ty_env.t) (exp : Syntax.expr) (tko : token_info) =
       | _ -> None)
   | _ -> None
 
-let pipeline (env : Ty_env.t) (exp : Syntax.expr) =
+let pipeline (env : States.tytbl) (exp : Syntax.expr) =
   let open Poly_checker in
   let range = Range.from_location exp.loc in
   match ty_of_exp env exp with
   | x -> Some (Ty.to_string x, range)
   | exception _ -> None
 
-let infer_par (env : Ty_env.t) (exp : Syntax.expr) =
+let infer_par (env : States.tytbl) (exp : Syntax.expr) =
   let glb =
     match exp.desc with
     | Pair _ -> exp
@@ -179,7 +179,7 @@ let infer_par (env : Ty_env.t) (exp : Syntax.expr) =
   in
   pipeline env glb
 
-let infer_space (env : Ty_env.t) (exp : Syntax.expr) =
+let infer_space (env : States.tytbl) (exp : Syntax.expr) =
   let open Poly_checker in
   match exp.desc with
   | Let (Val (x, e1), _) | Let (Rec (_, x, e1), _) ->
@@ -191,13 +191,13 @@ let infer_space (env : Ty_env.t) (exp : Syntax.expr) =
       Some (Ty.to_string ty, range)
   | _ -> pipeline env exp
 
-let tystr_of_exp (env : Ty_env.t) (atbl : Amem.mem) (tko : token_info)
+let tystr_of_exp (env : States.tytbl) (atbl : Amem.mem) (tko : token_info)
     (exp : Syntax.expr) =
   match tko with
   | Some (ID x, range) ->
       let x' = List.assoc (x, exp.loc) atbl in
       let _ = Printf.eprintf "Var %s\n" x' in
-      let ty = Ty_env.find x' env in
+      let ty = List.assoc x' env in
       Some (Ty.to_string ty, range)
   | Some ((VAL | REC), range) -> infer_bind env exp
   | Some (EQ, range) -> (

@@ -68,9 +68,11 @@ module States = struct
   and pstate = Ast of expr * Amem.mem | Fail of string * Range.t
 
   and tstate =
-    | Checked of Ty_env.t
+    | Checked of tytbl
     | Typerr of string
     | Otherr of string * Range.t
+  
+  and tytbl = (id * Ty.t) list
 
   exception Lookup_error
 
@@ -165,6 +167,15 @@ module States = struct
     if n < 26 then sprintf "'%c" (Char.chr (base + n))
     else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
 
+  let tbl_of_env (env : Ty_env.t) : tytbl =
+    let rec traverse i acc =
+      if i = 0 then acc else
+        let query = "#" ^ (Int.to_string i) in
+        let item = Ty_env.find query env in
+        traverse (i - 1) ((query, item) :: acc)
+    in
+    traverse (!Aenv.count) []
+
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
     match pstate with
@@ -172,7 +183,7 @@ module States = struct
         let tyenv = Ty_env.empty in
         let a = Ty.new_var () in
         match infer tyenv exp a with
-        | tyenv', _ -> Checked tyenv'
+        | tyenv', _ -> Checked (tbl_of_env tyenv')
         | exception Unimplemented -> Typerr "Type checker unimplemented"
         | exception Type_error msg -> Typerr msg)
     | Fail (msg, range) -> Otherr (msg, range)
