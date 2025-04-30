@@ -10,6 +10,8 @@ open Lang_m.Poly_checker
 
 type token_info = (Parser.token * Range.t) option
 
+module T = Ty_env.T
+
 let check_top (exp : Syntax.expr) : Ty.t =
   let tyenv = Ty_env.empty in
   let a = Ty.new_var () in
@@ -58,7 +60,7 @@ let slice txt lnum cnum =
   String.sub txt start (txtlen - start)
 
 let ty_of_token (token : Parser.token) =
-  let open Ty in
+  let open T in
   match token with
   | TRUE | FALSE -> bool
   | READ -> fn (int, int)
@@ -86,36 +88,37 @@ let token_at_pos (raw : string) (pos : Position.t) =
   | lexbuf -> token_with_lexbuf lexbuf pos
   | exception _ -> None
 
-let rec ty_of_exp (env : States.tytbl) (exp : Syntax.expr) : Ty.t =
+let rec ty_of_exp (env : States.tytbl) (exp : Syntax.expr) : Ty_env.value =
+  let open Ty_env in
   match exp.desc with
-  | Const (String _) -> Ty.string
-  | Const (Int _) -> Ty.int
-  | Const (Bool _) -> Ty.bool
+  | Const (String _) -> T.string
+  | Const (Int _) -> T.int
+  | Const (Bool _) -> T.bool
   | Var x -> List.assoc x env
   | Fn (x, e) ->
       let param = List.assoc x env in
       let body = ty_of_exp env e in
-      Ty.fn (param, body)
+      T.fn (param, body)
   | App (e1, e2) ->
       let ty1 = ty_of_exp env e1 in
       let ty2 = ty_of_exp env e2 in
-      Ty.app (ty1, ty2)
+      T.app (ty1, ty2)
   | Let (_, e2) -> ty_of_exp env e2
   | If (e0, e1, e2) -> ty_of_exp env e1
   | Bop (op, e1, e2) -> (
-      match op with Add | Sub -> Ty.int | Eq | And | Or -> Ty.bool)
-  | Read -> Ty.int
+      match op with Add | Sub -> T.int | Eq | And | Or -> T.bool)
+  | Read -> T.int
   | Write e -> ty_of_exp env e
-  | Malloc e -> Ty.ref (ty_of_exp env e)
+  | Malloc e -> T.ref (ty_of_exp env e)
   | Assign (e1, e2) -> ty_of_exp env e2
-  | Deref e -> Ty.deref (ty_of_exp env e)
+  | Deref e -> T.deref (ty_of_exp env e)
   | Seq (e1, e2) -> ty_of_exp env e2
   | Pair (e1, e2) ->
       let t1 = ty_of_exp env e1 in
       let t2 = ty_of_exp env e2 in
-      Ty.pair (t1, t2)
-  | Fst e -> Ty.fst (ty_of_exp env e)
-  | Snd e -> Ty.snd (ty_of_exp env e)
+      T.pair (t1, t2)
+  | Fst e -> T.fst (ty_of_exp env e)
+  | Snd e -> T.snd (ty_of_exp env e)
 
 let infer_bind (env : States.tytbl) (exp : Syntax.expr) =
   let open Poly_checker in
@@ -128,7 +131,7 @@ let infer_bind (env : States.tytbl) (exp : Syntax.expr) =
 
   match ty_of_exp env fexp with
   | fty ->
-      let fty_str = Ty.to_string fty in
+      let fty_str = T.to_string fty in
       let r = Range.from_location exp.loc in
       let sln, scl = (r.start.ln, r.start.col) in
       let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
@@ -142,23 +145,23 @@ let infer_branch (env : States.tytbl) (exp : Syntax.expr) (tko : token_info) =
   | If (e1, e2, e3) -> (
       match tko with
       | Some (IF, if_range) ->
-          let ty = Ty.bool in
+          let ty = T.bool in
           let e1_range = Range.from_location e1.loc in
           let start, end_ = (if_range.start, e1_range.end_) in
           let range = Range.create ~start ~end_ in
-          Some (Ty.to_string ty, range)
+          Some (T.to_string ty, range)
       | Some (THEN, th_range) ->
           let ty = ty_of_exp env e2 in
           let e2_range = Range.from_location e2.loc in
           let start, end_ = (th_range.start, e2_range.end_) in
           let range = Range.create ~start ~end_ in
-          Some (Ty.to_string ty, range)
+          Some (T.to_string ty, range)
       | Some (ELSE, el_range) ->
           let ty = ty_of_exp env e3 in
           let e3_range = Range.from_location e3.loc in
           let start, end_ = (el_range.start, e3_range.end_) in
           let range = Range.create ~start ~end_ in
-          Some (Ty.to_string ty, range)
+          Some (T.to_string ty, range)
       | _ -> None)
   | _ -> None
 
@@ -166,7 +169,7 @@ let pipeline (env : States.tytbl) (exp : Syntax.expr) =
   let open Poly_checker in
   let range = Range.from_location exp.loc in
   match ty_of_exp env exp with
-  | x -> Some (Ty.to_string x, range)
+  | x -> Some (T.to_string x, range)
   | exception _ -> None
 
 let infer_par (env : States.tytbl) (exp : Syntax.expr) =
@@ -188,7 +191,7 @@ let infer_space (env : States.tytbl) (exp : Syntax.expr) =
       let sln, scl = (r.start.ln, r.start.col) in
       let _, eln, ecl = Location.get_pos_info e1.loc.loc_end in
       let range = Range.from_tuples (sln, scl) (eln - 1, ecl) in
-      Some (Ty.to_string ty, range)
+      Some (T.to_string ty, range)
   | _ -> pipeline env exp
 
 let tystr_of_exp (env : States.tytbl) (atbl : Amem.mem) (tko : token_info)
@@ -198,7 +201,7 @@ let tystr_of_exp (env : States.tytbl) (atbl : Amem.mem) (tko : token_info)
       let x' = List.assoc (x, exp.loc) atbl in
       let _ = Printf.eprintf "Var %s\n" x' in
       let ty = List.assoc x' env in
-      Some (Ty.to_string ty, range)
+      Some (T.to_string ty, range)
   | Some ((VAL | REC), range) -> infer_bind env exp
   | Some (EQ, range) -> (
       match exp.desc with
@@ -221,32 +224,32 @@ let tystr_of_exp (env : States.tytbl) (atbl : Amem.mem) (tko : token_info)
       match exp.desc with
       | Write e ->
           let ty = ty_of_exp env e in
-          let ty' = Ty.fn (ty, ty) in
-          Some (Ty.to_string ty', range)
+          let ty' = T.fn (ty, ty) in
+          Some (T.to_string ty', range)
       | _ -> failwith "Not a write")
   | Some (MALLOC, range) -> (
       match exp.desc with
       | Malloc e ->
           let ty = ty_of_exp env e in
-          let ty' = Ty.fn (ty, Ty.ref ty) in
-          Some (Ty.to_string ty', range)
+          let ty' = T.fn (ty, T.ref ty) in
+          Some (T.to_string ty', range)
       | _ -> failwith "Not a malloc")
   | Some (COLEQ, range) -> (
       match exp.desc with
       | Assign (e1, e2) ->
           let ty = ty_of_exp env e2 in
-          let ty' = Ty.fn (Ty.ref ty, Ty.fn (ty, ty)) in
-          Some (Ty.to_string ty', range)
+          let ty' = T.fn (T.ref ty, T.fn (ty, ty)) in
+          Some (T.to_string ty', range)
       | _ -> failwith "Not a assign")
   | Some (BANG, range) -> (
       match exp.desc with
       | Deref e ->
           let ty = ty_of_exp env e in
-          let ty' = Ty.fn (ty, Ty.deref ty) in
-          Some (Ty.to_string ty', range)
+          let ty' = T.fn (ty, T.deref ty) in
+          Some (T.to_string ty', range)
       | _ -> failwith "Not a assign")
   | Some ((FN | RARROW | LET | IN | END | DOT | COMMA | SEMI), _) ->
       pipeline env exp
   | Some ((EOF | COMMENT _), _) -> None
-  | Some (token, range) -> Some (Ty.to_string (ty_of_token token), range)
+  | Some (token, range) -> Some (T.to_string (ty_of_token token), range)
   | None -> infer_space env exp

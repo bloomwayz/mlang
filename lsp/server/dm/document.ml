@@ -71,8 +71,8 @@ module States = struct
     | Checked of tytbl
     | Typerr of string
     | Otherr of string * Range.t
-  
-  and tytbl = (id * Ty.t) list
+
+  and tytbl = (id * Ty_env.value) list
 
   exception Lookup_error
 
@@ -156,11 +156,11 @@ module States = struct
         let open Lexing in
         let range = Range.from_lexbuf lexbuf in
         Fail (msg, range)
-    | exception _ -> 
+    | exception _ ->
         let open Lexing in
         let range = Range.from_lexbuf lexbuf in
         Fail ("Syntax Error", range)
-  
+
   let string_of_cnt n =
     let sprintf = Printf.sprintf in
     let base = Char.code 'a' in
@@ -169,12 +169,13 @@ module States = struct
 
   let tbl_of_env (env : Ty_env.t) : tytbl =
     let rec traverse i acc =
-      if i = 0 then acc else
-        let query = "#" ^ (Int.to_string i) in
-        let item = Ty_env.find query env in
+      if i = 0 then acc
+      else
+        let query = "#" ^ Int.to_string i in
+        let item = Ty_env.lookup query env in
         traverse (i - 1) ((query, item) :: acc)
     in
-    traverse (!Aenv.count) []
+    traverse !Aenv.count []
 
   let get_tstate (pstate : pstate) : tstate =
     let open Poly_checker in
