@@ -76,6 +76,7 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "@vscode/vsce": "^3.3.2",
         "npm-watch": "^0.13.0"
     }
 }
