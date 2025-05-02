@@ -59,6 +59,7 @@ module Ty = struct
 
   (* Generate a new type variable *)
   let new_var : unit -> t = fun () -> Var (gen_sym ())
+
   let int : t = Int
   let bool : t = Bool
   let string : t = String
@@ -101,38 +102,6 @@ module Ty = struct
     | _ -> failwith "Not a pair"
 end
 
-(* Definitions related to substitution *)
-
-type subst = Ty.t -> Ty.t
-
-let empty_subst : subst = fun t -> t
-
-let make_subst (x : var) (t : Ty.t) : subst =
-  let rec subs : Ty.t -> Ty.t = function
-    | (Int | Bool | String) as t' -> t'
-    | Pair (t1, t2) -> Pair (subs t1, subs t2)
-    | Loc t' -> Loc (subs t')
-    | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
-    | Var y when x = y -> t
-    | Var _ as t' -> t'
-  in
-  subs
-
-let make_var_subst : var -> var -> subst =
- fun var_old var_new ->
-  let rec subs : Ty.t -> Ty.t =
-   fun t ->
-    match t with
-    | Pair (t1, t2) -> Pair (subs t1, subs t2)
-    | Loc t' -> Loc (subs t')
-    | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
-    | Var x -> if x = var_old then Var var_new else t
-    | Int | Bool | String -> t
-  in
-  subs
-
-let ( << ) s1 s2 t = s1 (s2 t) (* substitution composition *)
-
 module Ty_scheme = struct
   type t = SimTy of Ty.t | GenTy of (var list * Ty.t)
 
@@ -140,12 +109,25 @@ module Ty_scheme = struct
     | SimTy t -> Ty.to_string t
     | GenTy (vars, t) -> "∀ (" ^ String.concat " " vars ^ ")." ^ Ty.to_string t
 
-  let instantiate : t -> Ty.t = function
+  let rename_var : var -> var -> (Ty.t -> Ty.t) =
+   fun var_old var_new ->
+    let rec subs : Ty.t -> Ty.t =
+    fun t ->
+      match t with
+      | Pair (t1, t2) -> Pair (subs t1, subs t2)
+      | Loc t' -> Loc (subs t')
+      | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
+      | Var x -> if x = var_old then Var var_new else t
+      | Int | Bool | String -> t
+    in
+    subs
+
+  let simplify : t -> Ty.t = function
     | SimTy t -> t
     | GenTy (alphas, t) ->
         let betas = List.map (fun _ -> Ty.gen_sym ()) alphas in
         List.fold_left2
-          (fun acc_typ alpha beta -> (make_var_subst alpha beta) acc_typ)
+          (fun acc_typ alpha beta -> (rename_var alpha beta) acc_typ)
           t alphas betas
 
   let int : t = SimTy Ty.Int
@@ -156,26 +138,26 @@ module Ty_scheme = struct
     | SimTy ty1, SimTy ty2 -> SimTy (Ty.fn (ty1, ty2))
     | SimTy ty1, GenTy (vars, ty2) -> GenTy (vars, Ty.fn (ty1, ty2))
     | ty1, ty2 ->
-        let ty1' = instantiate ty1 in
-        let ty2' = instantiate ty2 in
+        let ty1' = simplify ty1 in
+        let ty2' = simplify ty2 in
         SimTy (Ty.fn (ty1', ty2'))
 
   let app : t * t -> t =
    fun (t1, t2) ->
-    let ty1 = instantiate t1 in
-    let ty2 = instantiate t2 in
+    let ty1 = simplify t1 in
+    let ty2 = simplify t2 in
     SimTy (Ty.app (ty1, ty2))
 
   let ref : t -> t = function
     | SimTy ty -> SimTy (Ty.ref ty)
     | GenTy (_, _) as gty ->
-        let ty = instantiate gty in
+        let ty = simplify gty in
         SimTy (Ty.ref ty)
 
   let deref : t -> t = function
     | SimTy ty -> SimTy (Ty.deref ty)
     | GenTy (_, _) as gty ->
-        let ty = instantiate gty in
+        let ty = simplify gty in
         SimTy (Ty.deref ty)
 
   let pair : t * t -> t = function
@@ -258,6 +240,25 @@ let generalize : Ty_env.t -> Ty.t -> Ty_scheme.t =
   let typ_ftv = ftv_of_ty t in
   let ftv = sub_ftv typ_ftv env_ftv in
   if List.length ftv = 0 then SimTy t else GenTy (ftv, t)
+
+(* Definitions related to substitution *)
+
+type subst = Ty.t -> Ty.t
+
+let empty_subst : subst = fun t -> t
+
+let make_subst (x : var) (t : Ty.t) : subst =
+  let rec subs : Ty.t -> Ty.t = function
+    | (Int | Bool | String) as t' -> t'
+    | Pair (t1, t2) -> Pair (subs t1, subs t2)
+    | Loc t' -> Loc (subs t')
+    | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
+    | Var y when x = y -> t
+    | Var _ as t' -> t'
+  in
+  subs
+
+let ( << ) s1 s2 t = s1 (s2 t) (* substitution composition *)
 
 let subst_scheme : subst -> Ty_scheme.t -> Ty_scheme.t =
  fun subs tyscm ->
