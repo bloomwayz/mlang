@@ -112,7 +112,7 @@ module Ty_scheme = struct
   let rename_var : var -> var -> (Ty.t -> Ty.t) =
    fun var_old var_new ->
     let rec subs : Ty.t -> Ty.t =
-    fun t ->
+     fun t ->
       match t with
       | Pair (t1, t2) -> Pair (subs t1, subs t2)
       | Loc t' -> Loc (subs t')
