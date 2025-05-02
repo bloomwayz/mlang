@@ -6,12 +6,15 @@ import {
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind,
+	Executable
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-	const command = path.join(context.extensionPath, '_build', 'default', 'lsp', 'server', 'bin', 'main.exe');
+	const command = context.asAbsolutePath(
+		path.join('_build', 'default', 'lsp', 'server', 'bin', 'main.exe')
+	);
 
     const serverOptions: ServerOptions = {
         run: { command, transport: TransportKind.stdio },
