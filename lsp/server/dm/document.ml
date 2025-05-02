@@ -16,26 +16,8 @@ module Amem = struct
 
   let init () : t = ref []
 
-  let string_of_loc (loc : Location.t) : string =
-    let range = Range.from_location loc in
-    let start, end_ = (range.start, range.end_) in
-    let sln, scl = (start.ln, start.col) in
-    let eln, ecl = (end_.ln, end_.col) in
-    Printf.sprintf "%d:%d - %d:%d" sln scl eln ecl
-
-  let print (mem : mem) : unit =
-    (* Printf.eprintf "===== Alpha-memory =====\n"; *)
-    List.iter
-      (fun ((id, loc), avar) ->
-        Printf.eprintf "%s\t%s\t%s\n" id (string_of_loc loc) avar)
-      mem
-  (* Printf.eprintf "========================\n" *)
-
   let store (id : id) (loc : Location.t) (avar : avar) (mem : t) =
     mem := ((id, loc), avar) :: !mem
-  (* Printf.eprintf "=== Store Completed ===\n"; *)
-  (* print !mem; *)
-  (* Printf.eprintf "=======================\n" *)
 end
 
 module Aenv = struct
@@ -193,9 +175,7 @@ module States = struct
   let update (states : t) (uri : string) (raw : string) =
     let uri_len = String.length uri in
     let fname = String.sub uri 8 (uri_len - 8) in
-    let _ = Printf.eprintf "===== Parsing Starts =====\n" in
     let pstate = get_pstate fname raw in
-    let _ = Printf.eprintf "===== Infering Starts =====\n" in
     let tstate = get_tstate pstate in
     let st = { rawState = raw; parsedState = pstate; typeState = tstate } in
 
@@ -243,10 +223,8 @@ let get_change params =
 (** document synchronization **)
 
 let on_did_open params =
-  let _ = Printf.eprintf "===== Server Initialized =====\n" in
   let uri = get_uri params in
   let raw = get_text params in
-  let _ = Printf.eprintf "===== Update Starts =====\n" in
   states @+ (uri, raw)
 
 let on_did_change params =
