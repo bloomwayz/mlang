@@ -1,6 +1,11 @@
+# VS Code
 .vscode/**
 .vscode-test/**
+
+# Git
 .gitignore
-vsc-extension-quickstart.md
-_build/.rpc
+
+# Dune
+_build/default/bin/**
+_build/.rpc/**
 _opam/**
