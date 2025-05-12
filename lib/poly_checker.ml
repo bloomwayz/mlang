@@ -107,74 +107,47 @@ module Ty_scheme = struct
 
   let to_string : t -> string = function
     | SimTy t -> Ty.to_string t
-    | GenTy (vars, t) -> "∀ (" ^ String.concat " " vars ^ ")." ^ Ty.to_string t
+    | GenTy (vars, t) ->
+        "∀ (" ^ String.concat ", " vars ^ "). " ^ Ty.to_string t
 
-  let rename_var : var -> var -> (Ty.t -> Ty.t) =
-   fun var_old var_new ->
-    let rec subs : Ty.t -> Ty.t =
-     fun t ->
-      match t with
-      | Pair (t1, t2) -> Pair (subs t1, subs t2)
-      | Loc t' -> Loc (subs t')
-      | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
-      | Var x -> if x = var_old then Var var_new else t
-      | Int | Bool | String -> t
-    in
-    subs
-
-  let simplify : t -> Ty.t = function
-    | SimTy t -> t
-    | GenTy (alphas, t) ->
-        let betas = List.map (fun _ -> Ty.gen_sym ()) alphas in
-        List.fold_left2
-          (fun acc_typ alpha beta -> (rename_var alpha beta) acc_typ)
-          t alphas betas
-
-  let int : t = SimTy Ty.Int
-  let bool : t = SimTy Ty.Bool
-  let string : t = SimTy Ty.String
+  let int : t = SimTy Ty.int
+  let bool : t = SimTy Ty.bool
+  let string : t = SimTy Ty.string
 
   let fn : t * t -> t = function
     | SimTy ty1, SimTy ty2 -> SimTy (Ty.fn (ty1, ty2))
     | SimTy ty1, GenTy (vars, ty2) -> GenTy (vars, Ty.fn (ty1, ty2))
-    | ty1, ty2 ->
-        let ty1' = simplify ty1 in
-        let ty2' = simplify ty2 in
-        SimTy (Ty.fn (ty1', ty2'))
+    | _ -> failwith "Not a rank-1 polymorphism"
 
-  let app : t * t -> t =
-   fun (t1, t2) ->
-    let ty1 = simplify t1 in
-    let ty2 = simplify t2 in
-    SimTy (Ty.app (ty1, ty2))
+  let app : t * t -> t = function
+    | SimTy ty1, SimTy ty2 -> SimTy (Ty.app (ty1, ty2))
+    | SimTy ty1, GenTy (_, ty2) -> SimTy (Ty.app (ty1, ty2))
+    | GenTy (_, ty1), SimTy ty2 -> SimTy (Ty.app (ty1, ty2))
+    | GenTy (_, ty1), GenTy (_, ty2) -> SimTy (Ty.app (ty1, ty2))
 
   let ref : t -> t = function
     | SimTy ty -> SimTy (Ty.ref ty)
-    | GenTy (_, _) as gty ->
-        let ty = simplify gty in
-        SimTy (Ty.ref ty)
+    | GenTy (_, ty) -> SimTy (Ty.ref ty)
 
   let deref : t -> t = function
     | SimTy ty -> SimTy (Ty.deref ty)
-    | GenTy (_, _) as gty ->
-        let ty = simplify gty in
-        SimTy (Ty.deref ty)
+    | GenTy (_, ty) -> SimTy (Ty.deref ty)
 
   let pair : t * t -> t = function
     | SimTy ty1, SimTy ty2 -> SimTy (Ty.pair (ty1, ty2))
-    | SimTy ty1, GenTy (vs, ty2) | GenTy (vs, ty2), SimTy ty1 ->
-        GenTy (vs, Ty.pair (ty1, ty2))
+    | SimTy ty1, GenTy (vs, ty2) -> GenTy (vs, Ty.pair (ty1, ty2))
+    | GenTy (vs, ty1), SimTy ty2 -> GenTy (vs, Ty.pair (ty1, ty2))
     | GenTy (vs1, ty1), GenTy (vs2, ty2) ->
         let vs = List.sort_uniq String.compare (vs1 @ vs2) in
         GenTy (vs, Ty.pair (ty1, ty2))
 
   let fst : t -> t = function
     | SimTy ty -> SimTy (Ty.fst ty)
-    | GenTy (vs, ty) -> GenTy (vs, Ty.fst ty)
+    | GenTy (vs, ty) -> SimTy (Ty.fst ty)
 
   let snd : t -> t = function
     | SimTy ty -> SimTy (Ty.snd ty)
-    | GenTy (vs, ty) -> GenTy (vs, Ty.snd ty)
+    | GenTy (vs, ty) -> SimTy (Ty.snd ty)
 end
 
 module Make_env (T : sig
