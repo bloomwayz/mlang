@@ -3,8 +3,6 @@
  * M Interpreter
  *)
 
-open! Base
-open Stdio
 open Syntax
 
 exception Run_error of string
@@ -38,9 +36,9 @@ module Dom = struct
     | _ -> raise (Type_error "not a function")
 
   let print_value = function
-    | Int n -> Out_channel.print_endline (Int.to_string n)
-    | Bool b -> Out_channel.print_endline (Bool.to_string b)
-    | String s -> Out_channel.print_endline s
+    | Int n -> print_endline (Int.to_string n)
+    | Bool b -> print_endline (Bool.to_string b)
+    | String s -> print_endline s
     | _ -> raise (Type_error "Write operand is not int/bool/string")
 end
 
@@ -50,13 +48,13 @@ end
  * load M l                M(l)
  *)
 let loc_count = ref 0
-let ( @+ ) f (x, v) y = if Poly.(y = x) then v else f y
+let ( @+ ) f (x, v) y = if y = x then v else f y
 let store m (l, v) = m @+ (l, v)
 let load m l = m l
 let bind env (x, v) = env @+ (x, v)
 
 let malloc m =
-  Int.incr loc_count;
+  incr loc_count;
   (!loc_count, m)
 
 (* auxiliary functions *)
@@ -102,10 +100,7 @@ let rec eval env mem exp =
       ((op_to_fn op) (v1, v2), m'')
   | Read ->
       Out_channel.(flush stdout);
-      let n =
-        try Int.of_string In_channel.(input_line_exn stdin)
-        with _ -> raise (Run_error "read error")
-      in
+      let n = try read_int () with _ -> raise (Run_error "read error") in
       (Int n, mem)
   | Write e ->
       let v, m' = eval env mem e in

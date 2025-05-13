@@ -1,6 +1,6 @@
 (library
  (name lang_m)
- (libraries stdio ocaml-compiler-libs.common string_dict))
+ (libraries ocaml-compiler-libs.common))
 
 (ocamllex lexer)
 

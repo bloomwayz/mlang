@@ -26,8 +26,6 @@
   ocaml
   menhir
   dune
-  base
-  stdio
   ocaml-compiler-libs
   yojson
   ppx_yojson_conv)

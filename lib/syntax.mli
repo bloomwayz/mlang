@@ -3,9 +3,6 @@
  * M Language Definition Interface File
  *)
 
-open! Base
-(** Definition of M's syntax, type and interpreter *)
-
 type expr = { desc : desc; loc : Location.t }
 
 and desc =
