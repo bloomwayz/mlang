@@ -28,7 +28,6 @@
   dune
   base
   stdio
-  yojson
   ocaml-compiler-libs
   yojson
   ppx_yojson_conv)
