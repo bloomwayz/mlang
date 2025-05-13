@@ -1,3 +1,0 @@
-(test
- (libraries alcotest base lang_m dm)
- (name test_lang_m))

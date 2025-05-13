@@ -31,8 +31,7 @@
   yojson
   ocaml-compiler-libs
   yojson
-  ppx_yojson_conv
-  (alcotest :with-test))
+  ppx_yojson_conv)
  (tags ("Programming Language")))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
