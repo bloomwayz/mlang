@@ -5,12 +5,16 @@ open Parser
 exception SyntaxError of string
 
 let comment_depth = ref 0
-
 let comment_spos = ref dummy_pos
 let comment_epos = ref dummy_pos
 
-let keywords =
-  String_dict.of_alist_exn
+let debug_tag = false
+let verbose s =  if debug_tag then (print_string s; print_newline())
+
+let keywords = Hashtbl.create 31
+let _ =
+  List.iter
+    (fun (keyword, tok) -> Hashtbl.add keywords keyword tok)
     [
       ("true", TRUE);
       ("false", FALSE);
@@ -27,7 +31,7 @@ let keywords =
       ("rec", REC);
       ("write", WRITE);
       ("malloc", MALLOC);
-      ("val", VAL)
+      ("val", VAL);
     ]
 
 let to_int s =
@@ -60,7 +64,7 @@ rule read =
   | blank    { read lexbuf }
   | newline  { new_line lexbuf; read lexbuf }
   | int as n { INT (to_int n) }
-  | id as s  { match String_dict.find keywords s with Some s -> s | None -> ID s }
+  | id as s  { match Hashtbl.find_opt keywords s with Some s -> s | None -> ID s }
   | str as s { STRING s }
   | "(*"     {
                 comment_depth := 1;

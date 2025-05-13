@@ -30,8 +30,6 @@
   stdio
   yojson
   ocaml-compiler-libs
-  (string_dict
-   (>= 0.17.0))
   yojson
   ppx_yojson_conv
   (alcotest :with-test))
