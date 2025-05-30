@@ -36,6 +36,7 @@ module Ty_env : sig
 
   val empty : t
   val lookup : Syntax.id -> t -> value
+  val rename : t -> t
 end
 
 type subst = Ty.t -> Ty.t

@@ -143,19 +143,14 @@ module States = struct
         let range = Range.from_lexbuf lexbuf in
         Fail ("Syntax Error", range)
 
-  let string_of_cnt n =
-    let sprintf = Printf.sprintf in
-    let base = Char.code 'a' in
-    if n < 26 then sprintf "'%c" (Char.chr (base + n))
-    else sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
-
   let tbl_of_env (env : Ty_env.t) : tytbl =
+    let open Poly_checker in
     let rec traverse i acc =
       if i = 0 then acc
       else
         let query = "#" ^ Int.to_string i in
-        let item = Ty_env.lookup query env in
-        traverse (i - 1) ((query, item) :: acc)
+        let value = Ty_env.lookup query env in
+        traverse (i - 1) ((query, value) :: acc)
     in
     traverse !Aenv.count []
 
@@ -166,7 +161,7 @@ module States = struct
         let tyenv = Ty_env.empty in
         let a = Ty.new_var () in
         match infer tyenv exp a with
-        | tyenv', _ -> Checked (tbl_of_env tyenv')
+        | tyenv', _ -> Checked (tyenv' |> Ty_env.rename |> tbl_of_env)
         | exception Unimplemented -> Typerr "Type checker unimplemented"
         | exception Type_error msg -> Typerr msg)
     | Fail (msg, range) -> Otherr (msg, range)
