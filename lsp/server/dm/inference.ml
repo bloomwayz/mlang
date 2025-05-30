@@ -45,20 +45,6 @@ let subexp_at_pos (ast : Syntax.expr) (pos : Position.t) =
   let subexps' = List.filter (in_range pos) subexps in
   List.nth_opt subexps' 0
 
-let slice txt lnum cnum =
-  let r = Str.regexp "\n" in
-  let txtlen = String.length txt in
-
-  let rec compute s i ln =
-    match Str.search_forward r s i with
-    | i -> if ln = lnum then i else compute s i (ln + 1)
-    | exception Not_found -> failwith "Not_found"
-  in
-
-  let start = compute txt 0 0 in
-
-  String.sub txt start (txtlen - start)
-
 let ty_of_token (token : Parser.token) =
   let open T in
   match token with
