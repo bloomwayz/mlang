@@ -140,6 +140,12 @@ module M_Printer = struct
         ps "loc (";
         pp_type tau1;
         ps ")"
+    | T_fun (tau1, tau2) ->
+        ps "fun ";
+        pp_type tau1;
+        ps " -> ";
+        pp_type tau2;
+        ps ")"
 
   let print_exp = pp 0
 
