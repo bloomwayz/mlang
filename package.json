@@ -63,7 +63,7 @@
         "compile": "tsc -b",
         "watch": "tsc -b -w",
         "lint": "eslint ./lsp/client/src --ext .ts,.tsx",
-        "postinstall": "cd lsp/client && npm install && cd ...",
+        "postinstall": "cd lsp/client && npm install && cd ..",
         "test": "sh ./scripts/e2e.sh"
     },
     "devDependencies": {
