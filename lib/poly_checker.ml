@@ -107,47 +107,74 @@ module Ty_scheme = struct
 
   let to_string : t -> string = function
     | SimTy t -> Ty.to_string t
-    | GenTy (vars, t) ->
-        "∀ (" ^ String.concat ", " vars ^ "). " ^ Ty.to_string t
+    | GenTy (vars, t) -> "∀ (" ^ String.concat " " vars ^ ")." ^ Ty.to_string t
 
-  let int : t = SimTy Ty.int
-  let bool : t = SimTy Ty.bool
-  let string : t = SimTy Ty.string
+  let rename_var : var -> var -> Ty.t -> Ty.t =
+   fun var_old var_new ->
+    let rec subs : Ty.t -> Ty.t =
+     fun t ->
+      match t with
+      | Pair (t1, t2) -> Pair (subs t1, subs t2)
+      | Loc t' -> Loc (subs t')
+      | Arrow (t1, t2) -> Arrow (subs t1, subs t2)
+      | Var x -> if x = var_old then Var var_new else t
+      | Int | Bool | String -> t
+    in
+    subs
+
+  let simplify : t -> Ty.t = function
+    | SimTy t -> t
+    | GenTy (alphas, t) ->
+        let betas = List.map (fun _ -> Ty.gen_sym ()) alphas in
+        List.fold_left2
+          (fun acc_typ alpha beta -> (rename_var alpha beta) acc_typ)
+          t alphas betas
+
+  let int : t = SimTy Ty.Int
+  let bool : t = SimTy Ty.Bool
+  let string : t = SimTy Ty.String
 
   let fn : t * t -> t = function
     | SimTy ty1, SimTy ty2 -> SimTy (Ty.fn (ty1, ty2))
     | SimTy ty1, GenTy (vars, ty2) -> GenTy (vars, Ty.fn (ty1, ty2))
-    | _ -> failwith "Not a rank-1 polymorphism"
+    | ty1, ty2 ->
+        let ty1' = simplify ty1 in
+        let ty2' = simplify ty2 in
+        SimTy (Ty.fn (ty1', ty2'))
 
-  let app : t * t -> t = function
-    | SimTy ty1, SimTy ty2 -> SimTy (Ty.app (ty1, ty2))
-    | SimTy ty1, GenTy (_, ty2) -> SimTy (Ty.app (ty1, ty2))
-    | GenTy (_, ty1), SimTy ty2 -> SimTy (Ty.app (ty1, ty2))
-    | GenTy (_, ty1), GenTy (_, ty2) -> SimTy (Ty.app (ty1, ty2))
+  let app : t * t -> t =
+   fun (t1, t2) ->
+    let ty1 = simplify t1 in
+    let ty2 = simplify t2 in
+    SimTy (Ty.app (ty1, ty2))
 
   let ref : t -> t = function
     | SimTy ty -> SimTy (Ty.ref ty)
-    | GenTy (_, ty) -> SimTy (Ty.ref ty)
+    | GenTy (_, _) as gty ->
+        let ty = simplify gty in
+        SimTy (Ty.ref ty)
 
   let deref : t -> t = function
     | SimTy ty -> SimTy (Ty.deref ty)
-    | GenTy (_, ty) -> SimTy (Ty.deref ty)
+    | GenTy (_, _) as gty ->
+        let ty = simplify gty in
+        SimTy (Ty.deref ty)
 
   let pair : t * t -> t = function
     | SimTy ty1, SimTy ty2 -> SimTy (Ty.pair (ty1, ty2))
-    | SimTy ty1, GenTy (vs, ty2) -> GenTy (vs, Ty.pair (ty1, ty2))
-    | GenTy (vs, ty1), SimTy ty2 -> GenTy (vs, Ty.pair (ty1, ty2))
+    | SimTy ty1, GenTy (vs, ty2) | GenTy (vs, ty2), SimTy ty1 ->
+        GenTy (vs, Ty.pair (ty1, ty2))
     | GenTy (vs1, ty1), GenTy (vs2, ty2) ->
         let vs = List.sort_uniq String.compare (vs1 @ vs2) in
         GenTy (vs, Ty.pair (ty1, ty2))
 
   let fst : t -> t = function
     | SimTy ty -> SimTy (Ty.fst ty)
-    | GenTy (vs, ty) -> SimTy (Ty.fst ty)
+    | GenTy (vs, ty) -> GenTy (vs, Ty.fst ty)
 
   let snd : t -> t = function
     | SimTy ty -> SimTy (Ty.snd ty)
-    | GenTy (vs, ty) -> SimTy (Ty.snd ty)
+    | GenTy (vs, ty) -> GenTy (vs, Ty.snd ty)
 end
 
 module Make_env (T : sig
@@ -179,7 +206,75 @@ struct
     with Not_found -> raise (Type_error ("Unbound tvar: " ^ x))
 end
 
-module Ty_env = Make_env (Ty_scheme)
+module Ty_env = struct
+  include Make_env (Ty_scheme)
+
+  let rec reduce env acc =
+    match env with
+    | [] -> acc
+    | (x, v) :: t ->
+        if List.mem_assoc x acc then reduce t acc else reduce t ((x, v) :: acc)
+
+  let string_of_cnt n =
+    let base = Char.code 'a' in
+    if n < 26 then Printf.sprintf "'%c" (Char.chr (base + n))
+    else Printf.sprintf "'%c%d" (Char.chr (base + (n mod 26))) (n / 26)
+
+  let rename_scheme (rename_map : var -> var) : Ty_scheme.t -> Ty_scheme.t =
+    let open Ty in
+    let open Ty_scheme in
+    let rec rename_ty bound_map ty =
+      match ty with
+      | Int | Bool | String -> ty
+      | Var v ->
+          Var
+            (match List.assoc_opt v bound_map with
+            | Some r -> r
+            | None -> rename_map v)
+      | Pair (t1, t2) -> Pair (rename_ty bound_map t1, rename_ty bound_map t2)
+      | Arrow (t1, t2) -> Arrow (rename_ty bound_map t1, rename_ty bound_map t2)
+      | Loc t -> Loc (rename_ty bound_map t)
+    in
+
+    function
+    | SimTy t -> SimTy (rename_ty [] t)
+    | GenTy (vars, t) ->
+        let fresh_vars = List.mapi (fun i _ -> string_of_cnt i) vars in
+        let bound_map = List.combine vars fresh_vars in
+        let renamed_t = rename_ty bound_map t in
+        GenTy (fresh_vars, renamed_t)
+
+  let rename' (env : t) : t =
+    let collect_all_vars tyscm =
+      let open Ty in
+      let open Ty_scheme in
+      let rec vars_of_ty t =
+        match t with
+        | Int | Bool | String -> []
+        | Var v -> [ v ]
+        | Pair (t1, t2) | Arrow (t1, t2) -> vars_of_ty t1 @ vars_of_ty t2
+        | Loc t -> vars_of_ty t
+      in
+      match tyscm with
+      | SimTy t -> vars_of_ty t
+      | GenTy (vars, t) -> vars @ vars_of_ty t
+    in
+
+    let all_vars =
+      List.fold_left (fun acc (_, tyscm) -> collect_all_vars tyscm @ acc) [] env
+      |> List.sort_uniq String.compare
+    in
+
+    let fresh_vars = List.mapi (fun i _ -> string_of_cnt i) all_vars in
+    let rename_map = List.combine all_vars fresh_vars in
+    let rename_var v =
+      match List.assoc_opt v rename_map with Some r -> r | None -> v
+    in
+
+    List.map (fun (x, tyscm) -> (x, rename_scheme rename_var tyscm)) env
+
+  let rename env = rename' (reduce (List.rev env) [])
+end
 
 (* Definitions related to free type variables *)
 
