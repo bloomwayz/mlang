@@ -4,6 +4,7 @@ open Syntax
 
 exception Empty_binding
 exception Invalid_selection
+exception Invalid_rec_func
 
 let make_loc (startpos, endpos) =
   Location.{ loc_start = startpos; loc_end = endpos; loc_ghost = false }
@@ -88,7 +89,9 @@ lexpr:
     | mkexp(LET; decls = list(decl); IN; body = cexp; END { desugar_let (decls, body) }) { $1 }
 decl:
     | mkdcl(VAL; x = ID; EQ; e = cexp { Val (x, e) }) { $1 }
-    | mkdcl(REC; f = ID; EQ; FN; x = ID; RARROW; e = cexp { Rec (f, x, e) }) { $1 }
+    | mkdcl(REC; f = ID; EQ; e = cexp { 
+        match e.desc with Fn (x, e_body) -> Rec (f, x, e_body) | _ -> raise Invalid_rec_func
+     }) { $1 }
 apply:
     | atom { $1 }
     | mkexp(f = apply; x = atom { App (f, x) }) { $1 }
