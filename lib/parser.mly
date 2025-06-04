@@ -43,18 +43,18 @@ let select = function
 %token <string * Lexing.position * Lexing.position> COMMENT
 %token EOF
 
-%nonassoc RARROW
-%right    SEMI
-%right    FN
-%nonassoc ELSE
-%right    WRITE
-%right    COLEQ
-%right    IF
-%left     EQ
-%left     PLUS MINUS OR
-%left     AND
-%right    BANG MALLOC
-%left     DOT
+
+%left SEMI
+%right FN RARROW LET
+%right WRITE
+%right COLEQ
+%nonassoc IF THEN ELSE
+%left EQ
+%left PLUS MINUS OR
+%left AND
+%right BANG MALLOC
+%left DOT 
+%nonassoc TRUE FALSE NUM ID STRING READ LPAREN
 
 %start <expr> prog
 %type <expr> expr
@@ -71,40 +71,36 @@ cexp:
     | COMMENT; cexp { $2 }
     | cexp; COMMENT { $1 }
 expr:
-    | apply { $1 }
-    | lexpr { $1 }
-    | mkexp(FN; param = ID; RARROW; body = cexp { Fn (param, body) }) { $1 }
-    | mkexp(IF; pred = cexp; THEN; con = cexp; ELSE; alt = cexp { If (pred, con, alt) }) { $1 }
-    | mkexp(e1 = cexp; COLEQ; e2 = cexp { Assign (e1, e2) }) { $1 }
-    | mkexp(e = cexp; DOT; n = INT { select (e, n) }) { $1 }
-    | mkexp(e1 = cexp; SEMI; e2 = cexp { Seq (e1, e2) }) { $1 }
-    | mkexp(BANG; e = cexp { Deref e }) { $1 }
-    | mkexp(READ { Read }) { $1 }
+    | aexpr { $1 }
+    | mkexp ( e1 = cexp; e2 = aexpr { App (e1, e2) }) { $1 }
     | mkexp(left = cexp; op = bop; right = cexp { Bop (op, left, right) }) { $1 }
+    | mkexp(e1 = cexp; SEMI; e2 = expr { Seq (e1, e2) }) { $1 }
+    | mkexp (e1 = cexp; COLEQ; e2 = cexp {Assign (e1, e2) }) { $1 }
+    | mkexp(e = cexp; DOT; n = INT { select (e, n) }) { $1 }
 %inline bop:
+    | PLUS { Add }
+    | MINUS { Sub }
     | EQ { Eq }
     | AND { And }
     | OR { Or }
-    | PLUS { Add }
-    | MINUS { Sub }
-lexpr:
+aexpr:
+    | LPAREN; e = cexp; RPAREN { e }
+    | mkexp(n = INT { Const (Int n) }) { $1 }
+    | mkexp(s = STRING { Const (String s) }) { $1 }
+    | mkexp(TRUE { Const (Bool true) }) { $1 }
+    | mkexp(FALSE { Const (Bool false) }) { $1 }
+    | mkexp(x = ID { Var x }) { $1 }
+    | mkexp(READ { Read }) { $1 }
+    | mkexp(FN; param = ID; RARROW; body = cexp { Fn (param, body) }) { $1 }
     | mkexp(LET; decls = list(decl); IN; body = cexp; END { desugar_let (decls, body) }) { $1 }
+    | mkexp(IF; pred = cexp; THEN; con = cexp; ELSE; alt = cexp { If (pred, con, alt) }) { $1 }
+    | mkexp(WRITE; e = cexp { Write e }) { $1 }
+    | mkexp(MALLOC; e = cexp { Malloc e }) { $1 }
+    | mkexp(BANG; e = cexp { Deref e }) { $1 }
+    | mkexp(LPAREN; e1 = cexp; COMMA; e2 = cexp; RPAREN { Pair (e1, e2) }) { $1 }
 decl:
     | mkdcl(VAL; x = ID; EQ; e = cexp { Val (x, e) }) { $1 }
     | mkdcl(REC; f = ID; EQ; e = cexp { 
         match e.desc with Fn (x, e_body) -> Rec (f, x, e_body) | _ -> raise Invalid_rec_func
      }) { $1 }
-apply:
-    | atom { $1 }
-    | mkexp(f = apply; x = atom { App (f, x) }) { $1 }
-    | mkexp(WRITE; e = atom { Write e }) { $1 }
-    | mkexp(MALLOC; e = atom { Malloc e }) { $1 }
-atom:
-    | mkexp(TRUE { Const (Bool true) }) { $1 }
-    | mkexp(FALSE { Const (Bool false) }) { $1 }
-    | mkexp(n = INT { Const (Int n) }) { $1 }
-    | mkexp(s = STRING { Const (String s) }) { $1 }
-    | mkexp(x = ID { Var x }) { $1 }
-    | mkexp(LPAREN; e1 = cexp; COMMA; e2 = cexp; RPAREN { Pair (e1, e2) }) { $1 }
-    | LPAREN; e = cexp; RPAREN { e }
     
