@@ -45,14 +45,16 @@ let select = function
 
 %nonassoc RARROW
 %right    SEMI
+%right    FN
 %nonassoc ELSE
+%right    WRITE
 %right    COLEQ
-%right    OR
-%right    AND
+%right    IF
 %left     EQ
-%left     PLUS MINUS
-%nonassoc DOT
-%nonassoc BANG
+%left     PLUS MINUS OR
+%left     AND
+%right    BANG MALLOC
+%left     DOT
 
 %start <expr> prog
 %type <expr> expr
